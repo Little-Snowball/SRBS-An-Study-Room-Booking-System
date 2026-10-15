@@ -1,0 +1,121 @@
+/* Unified light theme, Chinese UI, system sans-serif.
+   Seat colors: green = free, yellow = reserved, red = in use, gray = maintenance.
+   States are always accompanied by text/icons, never color alone. */
+:root {
+  --color-primary: #2f6bff;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-info: #64748b;
+  --seat-free: #22c55e;
+  --seat-reserved: #eab308;
+  --seat-in-use: #ef4444;
+  --seat-maintenance: #9ca3af;
+  --bg-page: #f5f7fa;
+  --bg-card: #ffffff;
+  --text-main: #1f2937;
+  --text-sub: #6b7280;
+  --border: #e5e7eb;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--bg-page);
+  color: var(--text-main);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.page {
+  padding: 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.status-free { background: #dcfce7; color: #166534; }
+.status-reserved { background: #fef9c3; color: #854d0e; }
+.status-in-use { background: #fee2e2; color: #991b1b; }
+.status-left-temp { background: #ffedd5; color: #9a3412; }
+.status-completed { background: #e0e7ff; color: #3730a3; }
+.status-cancelled { background: #f3f4f6; color: #4b5563; }
+.status-violated { background: #fee2e2; color: #7f1d1d; }
+.status-maintenance { background: #f3f4f6; color: #4b5563; }
+.status-closed { background: #f3f4f6; color: #4b5563; }
+
+/* Seat map: color + label, never color alone */
+.seat {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 48px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.seat--free { background: var(--seat-free); color: #fff; }
+.seat--reserved { background: var(--seat-reserved); color: #fff; cursor: not-allowed; }
+.seat--in-use { background: var(--seat-in-use); color: #fff; cursor: not-allowed; }
+.seat--maintenance { background: var(--seat-maintenance); color: #fff; cursor: not-allowed; }
+.seat--selected { outline: 3px solid var(--color-primary); }
+
+@media (max-width: 320px) {
+  .seat { width: 44px; height: 40px; font-size: 11px; }
+  .page { padding: 8px; }
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.flex { display: flex; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.gap-8 { gap: 8px; }
+.gap-16 { gap: 16px; }
+.text-sub { color: var(--text-sub); font-size: 12px; }

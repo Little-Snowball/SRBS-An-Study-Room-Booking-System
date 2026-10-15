@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.reservation.mapper.ReservationMapper">
+
+  <resultMap id="reservationMap" type="edu.campus.studyroom.reservation.domain.Reservation">
+    <id property="id" column="id"/>
+    <result property="orderNo" column="order_no"/>
+    <result property="userId" column="user_id"/>
+    <result property="roomId" column="room_id"/>
+    <result property="seatId" column="seat_id"/>
+    <result property="roomNameSnapshot" column="room_name_snapshot"/>
+    <result property="seatCodeSnapshot" column="seat_code_snapshot"/>
+    <result property="startAt" column="start_at"/>
+    <result property="endAt" column="end_at"/>
+    <result property="status" column="status"/>
+    <result property="ruleVersionId" column="rule_version_id"/>
+    <result property="ruleSnapshot" column="rule_snapshot"/>
+    <result property="checkinDueAt" column="checkin_due_at"/>
+    <result property="cancelDueAt" column="cancel_due_at"/>
+    <result property="checkInAt" column="check_in_at"/>
+    <result property="lastLeaveAt" column="last_leave_at"/>
+    <result property="leaveDueAt" column="leave_due_at"/>
+    <result property="finishedAt" column="finished_at"/>
+    <result property="leaveCount" column="leave_count"/>
+    <result property="terminationReason" column="termination_reason"/>
+    <result property="version" column="version"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <sql id="reservationColumns">
+    id, order_no, user_id, room_id, seat_id, room_name_snapshot, seat_code_snapshot,
+    start_at, end_at, status, rule_version_id, rule_snapshot, checkin_due_at, cancel_due_at,
+    check_in_at, last_leave_at, leave_due_at, finished_at, leave_count, termination_reason,
+    version, created_at, updated_at
+  </sql>
+
+  <select id="selectById" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation WHERE id = #{id}
+  </select>
+
+  <select id="selectByIdForUpdate" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation WHERE id = #{id} FOR UPDATE
+  </select>
+
+  <select id="selectByOrderNo" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation WHERE order_no = #{orderNo}
+  </select>
+
+  <select id="selectByUserIdPage" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation
+    WHERE user_id = #{userId}
+    <if test="status != null">AND status = #{status}</if>
+    <if test="dateFrom != null">AND start_at &gt;= #{dateFrom}</if>
+    <if test="dateTo != null">AND start_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    ORDER BY id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countByUserId" resultType="long">
+    SELECT COUNT(*) FROM reservation
+    WHERE user_id = #{userId}
+    <if test="status != null">AND status = #{status}</if>
+    <if test="dateFrom != null">AND start_at &gt;= #{dateFrom}</if>
+    <if test="dateTo != null">AND start_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+  </select>
+
+  <select id="selectEffectiveByUserId" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation
+    WHERE user_id = #{userId} AND status IN ('RESERVED', 'IN_USE', 'LEFT_TEMP')
+    ORDER BY start_at
+  </select>
+
+  <select id="selectEffectiveBySeatId" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation
+    WHERE seat_id = #{seatId} AND status IN ('RESERVED', 'IN_USE', 'LEFT_TEMP')
+    ORDER BY start_at
+  </select>
+
+  <!-- 房间内全部座位的有效预约（资源变更影响处理） -->
+  <select id="selectEffectiveBySeatIdsOfRoom" resultMap="reservationMap">
+    SELECT r.id, r.order_no, r.user_id, r.room_id, r.seat_id, r.room_name_snapshot,
+           r.seat_code_snapshot, r.start_at, r.end_at, r.status, r.rule_version_id,
+           r.rule_snapshot, r.checkin_due_at, r.cancel_due_at, r.check_in_at, r.last_leave_at,
+           r.leave_due_at, r.finished_at, r.leave_count, r.termination_reason, r.version,
+           r.created_at, r.updated_at
+    FROM reservation r
+    JOIN seat s ON s.id = r.seat_id
+    WHERE s.room_id = #{roomId}
+      AND r.status IN ('RESERVED', 'IN_USE', 'LEFT_TEMP')
+    ORDER BY r.start_at, r.id
+  </select>
+
+  <!-- 有效预约区间重叠查询：a.start < b.end 且 a.end > b.start；相邻不冲突 -->
+  <select id="selectOverlappingForSeat" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation
+    WHERE seat_id = #{seatId}
+      AND status IN ('RESERVED', 'IN_USE', 'LEFT_TEMP')
+      AND start_at &lt; #{endAt} AND end_at &gt; #{startAt}
+    ORDER BY start_at
+  </select>
+
+  <select id="selectOverlappingForUser" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation
+    WHERE user_id = #{userId}
+      AND status IN ('RESERVED', 'IN_USE', 'LEFT_TEMP')
+      AND start_at &lt; #{endAt} AND end_at &gt; #{startAt}
+    ORDER BY start_at
+  </select>
+
+  <!--
+    结算候选：已到最早适用业务截止的有效订单。候选列表不是授权与状态依据，
+    每个订单在各自的 guard 短事务内重读重判。按适用截止升序、同截止按 id 升序。
+  -->
+  <select id="selectSettlementCandidates" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation
+    WHERE (status = 'RESERVED' AND (checkin_due_at &lt;= #{now} OR end_at &lt;= #{now}))
+       OR (status = 'IN_USE' AND end_at &lt;= #{now})
+       OR (status = 'LEFT_TEMP' AND ((leave_due_at IS NOT NULL AND leave_due_at &lt;= #{now}) OR end_at &lt;= #{now}))
+    ORDER BY CASE status
+               WHEN 'RESERVED' THEN LEAST(checkin_due_at, end_at)
+               WHEN 'LEFT_TEMP' THEN LEAST(COALESCE(leave_due_at, end_at), end_at)
+               ELSE end_at END, id
+    LIMIT #{limit}
+  </select>
+
+  <select id="selectAdminPage" resultMap="reservationMap">
+    SELECT r.* FROM reservation r
+    LEFT JOIN app_user u ON u.id = r.user_id
+    <where>
+      <if test="account != null and account != ''">AND u.account LIKE CONCAT(#{account}, '%')</if>
+      <if test="roomId != null">AND r.room_id = #{roomId}</if>
+      <if test="status != null">AND r.status = #{status}</if>
+      <if test="dateFrom != null">AND r.start_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND r.start_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+    ORDER BY r.id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countAdminPage" resultType="long">
+    SELECT COUNT(*) FROM reservation r
+    LEFT JOIN app_user u ON u.id = r.user_id
+    <where>
+      <if test="account != null and account != ''">AND u.account LIKE CONCAT(#{account}, '%')</if>
+      <if test="roomId != null">AND r.room_id = #{roomId}</if>
+      <if test="status != null">AND r.status = #{status}</if>
+      <if test="dateFrom != null">AND r.start_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND r.start_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+  </select>
+
+  <select id="countByStartDate" resultType="long">
+    SELECT COUNT(*) FROM reservation
+    WHERE start_at &gt;= #{date} AND start_at &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
+      AND status &lt;&gt; 'CANCELLED'
+  </select>
+
+  <select id="countDistinctStudentByStartDate" resultType="long">
+    SELECT COUNT(DISTINCT user_id) FROM reservation
+    WHERE start_at &gt;= #{date} AND start_at &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
+      AND status &lt;&gt; 'CANCELLED'
+  </select>
+
+  <select id="countCancelledByStartDate" resultType="long">
+    SELECT COUNT(*) FROM reservation
+    WHERE start_at &gt;= #{date} AND start_at &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
+      AND status = 'CANCELLED'
+  </select>
+
+  <select id="selectByStartBetween" resultMap="reservationMap">
+    SELECT <include refid="reservationColumns"/> FROM reservation
+    WHERE start_at &gt;= #{from} AND start_at &lt; #{to}
+    ORDER BY start_at, id
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.reservation.domain.Reservation"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO reservation (order_no, user_id, room_id, seat_id, room_name_snapshot, seat_code_snapshot,
+                             start_at, end_at, status, rule_version_id, rule_snapshot, checkin_due_at,
+                             cancel_due_at, check_in_at, last_leave_at, leave_due_at, finished_at,
+                             leave_count, termination_reason, version, created_at, updated_at)
+    VALUES (#{orderNo}, #{userId}, #{roomId}, #{seatId}, #{roomNameSnapshot}, #{seatCodeSnapshot},
+            #{startAt}, #{endAt}, #{status}, #{ruleVersionId}, #{ruleSnapshot}, #{checkinDueAt},
+            #{cancelDueAt}, #{checkInAt}, #{lastLeaveAt}, #{leaveDueAt}, #{finishedAt},
+            #{leaveCount}, #{terminationReason}, 0, #{createdAt}, #{updatedAt})
+  </insert>
+
+  <!-- 乐观状态更新：WHERE 带期望 version，affectedRows 必须为 1 -->
+  <update id="updateState" parameterType="edu.campus.studyroom.reservation.domain.Reservation">
+    UPDATE reservation
+    SET status = #{status},
+        check_in_at = #{checkInAt},
+        last_leave_at = #{lastLeaveAt},
+        leave_due_at = #{leaveDueAt},
+        finished_at = #{finishedAt},
+        leave_count = #{leaveCount},
+        termination_reason = #{terminationReason},
+        version = version + 1,
+        updated_at = #{updatedAt}
+    WHERE id = #{id} AND version = #{version}
+  </update>
+</mapper>

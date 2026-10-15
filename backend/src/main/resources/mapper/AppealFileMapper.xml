@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.appeal.mapper.AppealFileMapper">
+
+  <resultMap id="appealFileMap" type="edu.campus.studyroom.appeal.domain.AppealFile">
+    <result property="appealId" column="appeal_id"/>
+    <result property="fileId" column="file_id"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.appeal.domain.AppealFile">
+    INSERT INTO appeal_file (appeal_id, file_id)
+    VALUES (#{appealId}, #{fileId})
+  </insert>
+
+  <select id="selectByAppealId" resultMap="appealFileMap">
+    SELECT appeal_id, file_id FROM appeal_file
+    WHERE appeal_id = #{appealId}
+    ORDER BY file_id
+  </select>
+
+  <select id="selectByFileId" resultMap="appealFileMap">
+    SELECT appeal_id, file_id FROM appeal_file
+    WHERE file_id = #{fileId}
+  </select>
+</mapper>

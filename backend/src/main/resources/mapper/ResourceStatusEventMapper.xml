@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.resource.mapper.ResourceStatusEventMapper">
+
+  <resultMap id="resourceStatusEventMap" type="edu.campus.studyroom.resource.domain.ResourceStatusEvent">
+    <id property="id" column="id"/>
+    <result property="resourceType" column="resource_type"/>
+    <result property="eventType" column="event_type"/>
+    <result property="roomId" column="room_id"/>
+    <result property="seatId" column="seat_id"/>
+    <result property="afterSnapshot" column="after_snapshot"/>
+    <result property="orderPolicy" column="order_policy"/>
+    <result property="effectiveAt" column="effective_at"/>
+    <result property="operatorId" column="operator_id"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <sql id="eventColumns">
+    id, resource_type, event_type, room_id, seat_id, after_snapshot, order_policy,
+    effective_at, operator_id, created_at
+  </sql>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.resource.domain.ResourceStatusEvent"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO resource_status_event (resource_type, event_type, room_id, seat_id, after_snapshot,
+                                       order_policy, effective_at, operator_id, created_at)
+    VALUES (#{resourceType}, #{eventType}, #{roomId}, #{seatId}, #{afterSnapshot},
+            #{orderPolicy}, #{effectiveAt}, #{operatorId}, #{createdAt})
+  </insert>
+
+  <select id="selectByRoomId" resultMap="resourceStatusEventMap">
+    SELECT <include refid="eventColumns"/> FROM resource_status_event
+    WHERE room_id = #{roomId} ORDER BY effective_at, id
+  </select>
+
+  <select id="selectBySeatId" resultMap="resourceStatusEventMap">
+    SELECT <include refid="eventColumns"/> FROM resource_status_event
+    WHERE seat_id = #{seatId} ORDER BY effective_at, id
+  </select>
+
+  <select id="selectLatestForRoomAt" resultMap="resourceStatusEventMap">
+    SELECT <include refid="eventColumns"/> FROM resource_status_event
+    WHERE room_id = #{roomId} AND effective_at &lt;= #{at}
+    ORDER BY effective_at DESC, id DESC LIMIT 1
+  </select>
+
+  <select id="selectLatestForSeatAt" resultMap="resourceStatusEventMap">
+    SELECT <include refid="eventColumns"/> FROM resource_status_event
+    WHERE seat_id = #{seatId} AND effective_at &lt;= #{at}
+    ORDER BY effective_at DESC, id DESC LIMIT 1
+  </select>
+
+  <select id="selectRoomEventsBetween" resultMap="resourceStatusEventMap">
+    SELECT <include refid="eventColumns"/> FROM resource_status_event
+    WHERE room_id = #{roomId} AND effective_at &gt;= #{from} AND effective_at &lt; #{to}
+    ORDER BY effective_at, id
+  </select>
+</mapper>

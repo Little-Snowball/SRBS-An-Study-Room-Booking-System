@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.settlement.mapper.ViolationMapper">
+
+  <resultMap id="violationMap" type="edu.campus.studyroom.settlement.domain.Violation">
+    <id property="id" column="id"/>
+    <result property="reservationId" column="reservation_id"/>
+    <result property="userId" column="user_id"/>
+    <result property="reason" column="reason"/>
+    <result property="status" column="status"/>
+    <result property="eventAt" column="event_at"/>
+    <result property="processedAt" column="processed_at"/>
+    <result property="notifiedAt" column="notified_at"/>
+    <result property="deductionLogId" column="deduction_log_id"/>
+    <result property="revokedAt" column="revoked_at"/>
+    <result property="revokedBy" column="revoked_by"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <sql id="violationColumns">
+    id, reservation_id, user_id, reason, status, event_at, processed_at, notified_at,
+    deduction_log_id, revoked_at, revoked_by, created_at
+  </sql>
+
+  <select id="selectById" resultMap="violationMap">
+    SELECT <include refid="violationColumns"/> FROM violation WHERE id = #{id}
+  </select>
+
+  <select id="selectByIdForUpdate" resultMap="violationMap">
+    SELECT <include refid="violationColumns"/> FROM violation WHERE id = #{id} FOR UPDATE
+  </select>
+
+  <select id="selectByReservationId" resultMap="violationMap">
+    SELECT <include refid="violationColumns"/> FROM violation WHERE reservation_id = #{reservationId}
+  </select>
+
+  <!-- 我的违约：按违约业务时间（截止点）倒序 -->
+  <select id="selectByUserIdPage" resultMap="violationMap">
+    SELECT <include refid="violationColumns"/> FROM violation
+    WHERE user_id = #{userId}
+    <if test="status != null">AND status = #{status}</if>
+    ORDER BY event_at DESC, id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countByUserId" resultType="long">
+    SELECT COUNT(*) FROM violation
+    WHERE user_id = #{userId}
+    <if test="status != null">AND status = #{status}</if>
+  </select>
+
+  <!-- 管理端违约列表：日期范围按违约业务时间 event_at；账号前缀匹配参数预编译 -->
+  <select id="selectAdminPage" resultMap="violationMap">
+    SELECT v.id, v.reservation_id, v.user_id, v.reason, v.status, v.event_at, v.processed_at,
+           v.notified_at, v.deduction_log_id, v.revoked_at, v.revoked_by, v.created_at
+    FROM violation v
+    LEFT JOIN app_user u ON u.id = v.user_id
+    <where>
+      <if test="status != null">AND v.status = #{status}</if>
+      <if test="account != null and account != ''">AND u.account LIKE CONCAT(#{account}, '%')</if>
+      <if test="dateFrom != null">AND v.event_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND v.event_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+    ORDER BY v.event_at DESC, v.id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countAdminPage" resultType="long">
+    SELECT COUNT(*)
+    FROM violation v
+    LEFT JOIN app_user u ON u.id = v.user_id
+    <where>
+      <if test="status != null">AND v.status = #{status}</if>
+      <if test="account != null and account != ''">AND u.account LIKE CONCAT(#{account}, '%')</if>
+      <if test="dateFrom != null">AND v.event_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND v.event_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+  </select>
+
+  <select id="countActiveByUser" resultType="long">
+    SELECT COUNT(*) FROM violation WHERE user_id = #{userId} AND status = 'ACTIVE'
+  </select>
+
+  <!-- 违约率统计：ACTIVE 违约中其预约起始时间落在区间内的（与按起始日计的订单同口径） -->
+  <select id="selectActiveInRange" resultMap="violationMap">
+    SELECT v.id, v.reservation_id, v.user_id, v.reason, v.status, v.event_at, v.processed_at,
+           v.notified_at, v.deduction_log_id, v.revoked_at, v.revoked_by, v.created_at
+    FROM violation v
+    JOIN reservation r ON r.id = v.reservation_id
+    WHERE v.status = 'ACTIVE'
+      AND r.start_at &gt;= #{from} AND r.start_at &lt; #{to}
+    ORDER BY v.id
+  </select>
+
+  <!-- 撤销：仅 ACTIVE 可撤销，affectedRows 必须为 1；REVOKED 记录不物理删除 -->
+  <update id="updateRevoked">
+    UPDATE violation
+    SET status = 'REVOKED', revoked_at = #{revokedAt}, revoked_by = #{revokedBy}
+    WHERE id = #{id} AND status = #{expectedStatus}
+  </update>
+
+  <update id="updateDeductionLog">
+    UPDATE violation SET deduction_log_id = #{deductionLogId} WHERE id = #{id}
+  </update>
+
+  <!-- 申诉窗口基期：在给定时刻前已通知（notified_at 起算 48h 由调用方换算后传入） -->
+  <select id="selectUnnotifiedBefore" resultMap="violationMap">
+    SELECT <include refid="violationColumns"/> FROM violation
+    WHERE notified_at &lt; #{now}
+    ORDER BY id
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.settlement.domain.Violation"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO violation (reservation_id, user_id, reason, status, event_at, processed_at,
+                           notified_at, deduction_log_id, revoked_at, revoked_by, created_at)
+    VALUES (#{reservationId}, #{userId}, #{reason}, #{status}, #{eventAt}, #{processedAt},
+            #{notifiedAt}, #{deductionLogId}, #{revokedAt}, #{revokedBy}, #{createdAt})
+  </insert>
+</mapper>

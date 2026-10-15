@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.user.mapper.AppUserMapper">
+
+  <resultMap id="appUserMap" type="edu.campus.studyroom.user.domain.AppUser">
+    <id property="id" column="id"/>
+    <result property="account" column="account"/>
+    <result property="passwordHash" column="password_hash"/>
+    <result property="name" column="name"/>
+    <result property="college" column="college"/>
+    <result property="phone" column="phone"/>
+    <result property="role" column="role"/>
+    <result property="status" column="status"/>
+    <result property="blocked" column="blocked"/>
+    <result property="mustChangePassword" column="must_change_password"/>
+    <result property="authVersion" column="auth_version"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <sql id="userColumns">
+    id, account, password_hash, name, college, phone, role, status, blocked,
+    must_change_password, auth_version, created_at, updated_at
+  </sql>
+
+  <select id="selectById" resultMap="appUserMap">
+    SELECT <include refid="userColumns"/> FROM app_user WHERE id = #{id}
+  </select>
+
+  <select id="selectByIdForUpdate" resultMap="appUserMap">
+    SELECT <include refid="userColumns"/> FROM app_user WHERE id = #{id} FOR UPDATE
+  </select>
+
+  <select id="selectByAccount" resultMap="appUserMap">
+    SELECT <include refid="userColumns"/> FROM app_user WHERE account = #{account}
+  </select>
+
+  <select id="selectPage" resultMap="appUserMap">
+    SELECT <include refid="userColumns"/> FROM app_user
+    <where>
+      <if test="account != null">AND account LIKE CONCAT(#{account}, '%')</if>
+      <if test="role != null">AND role = #{role}</if>
+      <if test="status != null">AND status = #{status}</if>
+    </where>
+    ORDER BY id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countPage" resultType="long">
+    SELECT COUNT(*) FROM app_user
+    <where>
+      <if test="account != null">AND account LIKE CONCAT(#{account}, '%')</if>
+      <if test="role != null">AND role = #{role}</if>
+      <if test="status != null">AND status = #{status}</if>
+    </where>
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.user.domain.AppUser"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO app_user (account, password_hash, name, college, phone, role, status, blocked,
+                          must_change_password, auth_version, created_at, updated_at)
+    VALUES (#{account}, #{passwordHash}, #{name}, #{college}, #{phone}, #{role}, #{status},
+            #{blocked}, #{mustChangePassword}, #{authVersion}, #{createdAt}, #{updatedAt})
+  </insert>
+
+  <update id="update">
+    UPDATE app_user
+    SET name = #{name}, college = #{college}, phone = #{phone}, updated_at = #{updatedAt}
+    WHERE id = #{id}
+  </update>
+
+  <update id="updateStatus">
+    UPDATE app_user
+    SET status = #{status}, blocked = #{blocked}, auth_version = auth_version + 1, updated_at = #{now}
+    WHERE id = #{id} AND auth_version = #{expectedAuthVersion}
+  </update>
+
+  <update id="bumpAuthVersion">
+    UPDATE app_user SET auth_version = auth_version + 1, updated_at = #{now} WHERE id = #{id}
+  </update>
+
+  <update id="updatePassword">
+    UPDATE app_user
+    SET password_hash = #{passwordHash}, must_change_password = #{mustChangePassword},
+        auth_version = auth_version + 1, updated_at = #{now}
+    WHERE id = #{id}
+  </update>
+
+  <select id="countByRole" resultType="long">
+    SELECT COUNT(*) FROM app_user WHERE role = #{role}
+  </select>
+</mapper>

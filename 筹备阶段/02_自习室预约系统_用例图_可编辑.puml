@@ -1,0 +1,50 @@
+@startuml
+' 自习室预约系统：可编辑 UML 用例源码；使用 PlantUML 重新渲染
+left to right direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #EEF8FA
+  BorderColor #287F97
+  ArrowColor #68889A
+  FontColor #17334B
+}
+actor "学生" as Student
+actor "管理员" as Admin
+actor "系统定时服务" as Timer
+rectangle "高校自习室预约与考勤管理系统" {
+    usecase "UC-01\n登录与身份认证" as UC01
+    usecase "UC-02\n查询自习室与可用座位" as UC02
+    usecase "UC-03\n提交座位预约" as UC03
+    usecase "UC-04\n校验信用与时段冲突" as UC04
+    usecase "UC-05\n取消未开始的预约" as UC05
+    usecase "UC-06\n现场签到确认" as UC06
+    usecase "UC-07\n暂离与恢复使用" as UC07
+    usecase "UC-08\n结束自习并签退" as UC08
+    usecase "UC-09\n超时释放与违约扣分" as UC09
+    usecase "UC-10\n查看信用流水与申诉" as UC10
+    usecase "UC-11\n自习室与座位维护" as UC11
+    usecase "UC-12\n预约与考勤规则配置" as UC12
+    usecase "UC-13\n申诉审核与信用调整" as UC13
+    usecase "UC-14\n查看运营统计看板" as UC14
+    usecase "UC-15\n发布系统公告" as UC15
+}
+Student -- UC01
+Student -- UC02
+Student -- UC03
+Student -- UC05
+Student -- UC06
+Student -- UC07
+Student -- UC08
+Student -- UC10
+Admin -- UC01
+Admin -- UC11
+Admin -- UC12
+Admin -- UC13
+Admin -- UC14
+Admin -- UC15
+Timer -- UC09
+UC03 ..> UC04 : <<include>>
+@enduml

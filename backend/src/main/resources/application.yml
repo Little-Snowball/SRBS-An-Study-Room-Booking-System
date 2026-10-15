@@ -1,0 +1,71 @@
+server:
+  address: 127.0.0.1
+  port: 8080
+  error:
+    include-message: never
+    include-stacktrace: never
+
+spring:
+  application:
+    name: studyroom
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/studyroom_dev?useUnicode=true&characterEncoding=utf8&connectionTimeZone=Asia/Shanghai&serverTimezone=Asia/Shanghai}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 12
+      connection-timeout: 5000
+      initialization-fail-timeout: -1
+  flyway:
+    enabled: true
+    clean-disabled: true
+    validate-on-migrate: true
+    baseline-on-migrate: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 16MB
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+
+app:
+  business-zone: Asia/Shanghai
+  jwt-secret-base64: ${JWT_SECRET_BASE64}
+  upload-dir: ${UPLOAD_DIR:./data/uploads}
+  bootstrap-account: ${BOOTSTRAP_ACCOUNT:}
+  bootstrap-password: ${BOOTSTRAP_PASSWORD:}
+  allow-demo-fixtures: false
+  session:
+    access-token-hours: 2
+    max-sessions-per-user: 5
+    expired-retention-days: 7
+  rate-limit:
+    login-per-ip-per-minute: 20
+    login-fail-per-account-15min: 5
+    login-pause-minutes: 15
+    checkin-per-order-5min: 5
+    checkin-per-ip-per-minute: 30
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%X{traceId:-}] %logger{36} - %msg%n"

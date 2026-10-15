@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.resource.mapper.SeatMapper">
+
+  <resultMap id="seatMap" type="edu.campus.studyroom.resource.domain.Seat">
+    <id property="id" column="id"/>
+    <result property="roomId" column="room_id"/>
+    <result property="code" column="code"/>
+    <result property="rowNo" column="row_no"/>
+    <result property="colNo" column="col_no"/>
+    <result property="hasPower" column="has_power"/>
+    <result property="nearWindow" column="near_window"/>
+    <result property="quietZone" column="quiet_zone"/>
+    <result property="status" column="status"/>
+    <result property="version" column="version"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <sql id="seatColumns">
+    id, room_id, code, row_no, col_no, has_power, near_window, quiet_zone, status, version,
+    created_at, updated_at
+  </sql>
+
+  <select id="selectById" resultMap="seatMap">
+    SELECT <include refid="seatColumns"/> FROM seat WHERE id = #{id}
+  </select>
+
+  <select id="selectByIdForUpdate" resultMap="seatMap">
+    SELECT <include refid="seatColumns"/> FROM seat WHERE id = #{id} FOR UPDATE
+  </select>
+
+  <select id="selectByRoomId" resultMap="seatMap">
+    SELECT <include refid="seatColumns"/> FROM seat
+    WHERE room_id = #{roomId}
+    ORDER BY row_no, col_no
+  </select>
+
+  <select id="selectByRoomAndCode" resultMap="seatMap">
+    SELECT <include refid="seatColumns"/> FROM seat
+    WHERE room_id = #{roomId} AND code = #{code}
+  </select>
+
+  <select id="selectByRoomRowCol" resultMap="seatMap">
+    SELECT <include refid="seatColumns"/> FROM seat
+    WHERE room_id = #{roomId} AND row_no = #{rowNo} AND col_no = #{colNo}
+  </select>
+
+  <select id="countByRoomId" resultType="long">
+    SELECT COUNT(*) FROM seat WHERE room_id = #{roomId}
+  </select>
+
+  <select id="countByRoomIdAndStatus" resultType="long">
+    SELECT COUNT(*) FROM seat WHERE room_id = #{roomId} AND status = #{status}
+  </select>
+
+  <select id="countAll" resultType="long">
+    SELECT COUNT(*) FROM seat
+  </select>
+
+  <!-- 房间内已有座位的最大行/列号：缩小房间行列时的越界校验依据（含停用座位） -->
+  <select id="selectMaxRowNo" resultType="java.lang.Integer">
+    SELECT MAX(row_no) FROM seat WHERE room_id = #{roomId}
+  </select>
+
+  <select id="selectMaxColNo" resultType="java.lang.Integer">
+    SELECT MAX(col_no) FROM seat WHERE room_id = #{roomId}
+  </select>
+
+  <select id="selectByIds" resultMap="seatMap">
+    SELECT <include refid="seatColumns"/> FROM seat
+    WHERE id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY row_no, col_no
+  </select>
+
+  <!--
+    匹配且空闲的座位：NORMAL 状态 + 标签匹配 + 在 [startAt, endAt) 内无有效预约重叠。
+    半开区间 a.start < b.end 且 a.end > b.start；相邻时段不算重叠。
+  -->
+  <select id="selectMatchingFree" resultMap="seatMap">
+    SELECT <include refid="seatColumns"/> FROM seat s
+    WHERE s.room_id = #{roomId}
+      AND s.status = 'NORMAL'
+      <if test="hasPower != null">AND s.has_power = #{hasPower}</if>
+      <if test="nearWindow != null">AND s.near_window = #{nearWindow}</if>
+      <if test="quietZone != null">AND s.quiet_zone = #{quietZone}</if>
+      AND NOT EXISTS (
+        SELECT 1 FROM reservation r
+        WHERE r.seat_id = s.id
+          AND r.status IN ('RESERVED', 'IN_USE', 'LEFT_TEMP')
+          AND r.start_at &lt; #{endAt} AND r.end_at &gt; #{startAt}
+      )
+    ORDER BY s.row_no, s.col_no
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.resource.domain.Seat"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO seat (room_id, code, row_no, col_no, has_power, near_window, quiet_zone,
+                      status, version, created_at, updated_at)
+    VALUES (#{roomId}, #{code}, #{rowNo}, #{colNo}, #{hasPower}, #{nearWindow}, #{quietZone},
+            #{status}, 0, #{createdAt}, #{updatedAt})
+  </insert>
+
+  <!-- 批量生成：调用方已在本事务内完成整批冲突校验，任何冲突都不允许走到这里 -->
+  <insert id="insertBatch">
+    INSERT INTO seat (room_id, code, row_no, col_no, has_power, near_window, quiet_zone,
+                      status, version, created_at, updated_at)
+    VALUES
+    <foreach collection="seats" item="seat" separator=",">
+      (#{seat.roomId}, #{seat.code}, #{seat.rowNo}, #{seat.colNo}, #{seat.hasPower},
+       #{seat.nearWindow}, #{seat.quietZone}, #{seat.status}, 0, #{seat.createdAt}, #{seat.updatedAt})
+    </foreach>
+  </insert>
+
+  <!-- 标签更新（PATCH 仅允许标签；坐标与编码不可变） -->
+  <update id="updateLabels">
+    UPDATE seat
+    SET has_power = #{hasPower},
+        near_window = #{nearWindow},
+        quiet_zone = #{quietZone},
+        version = version + 1,
+        updated_at = #{now}
+    WHERE id = #{id} AND version = #{expectedVersion}
+  </update>
+
+  <update id="updateStatus">
+    UPDATE seat
+    SET status = #{status},
+        version = version + 1,
+        updated_at = #{now}
+    WHERE id = #{id} AND version = #{expectedVersion}
+  </update>
+</mapper>

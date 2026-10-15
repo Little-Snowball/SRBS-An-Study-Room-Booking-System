@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.reservation.mapper.AttendanceEventMapper">
+
+  <resultMap id="attendanceEventMap" type="edu.campus.studyroom.reservation.domain.AttendanceEvent">
+    <id property="id" column="id"/>
+    <result property="reservationId" column="reservation_id"/>
+    <result property="eventType" column="event_type"/>
+    <result property="eventAt" column="event_at"/>
+    <result property="operatorId" column="operator_id"/>
+    <result property="requestKey" column="request_key"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <sql id="eventColumns">id, reservation_id, event_type, event_at, operator_id, request_key, created_at</sql>
+
+  <select id="selectByReservationAndRequestKey" resultMap="attendanceEventMap">
+    SELECT <include refid="eventColumns"/> FROM attendance_event
+    WHERE reservation_id = #{reservationId} AND request_key = #{requestKey}
+  </select>
+
+  <select id="selectByReservationId" resultMap="attendanceEventMap">
+    SELECT <include refid="eventColumns"/> FROM attendance_event
+    WHERE reservation_id = #{reservationId}
+    ORDER BY event_at, id
+  </select>
+
+  <!-- 30 分钟流量统计：区间内 CHECK_IN 事件，可按房间过滤 -->
+  <select id="selectCheckInsBetween" resultMap="attendanceEventMap">
+    SELECT e.id, e.reservation_id, e.event_type, e.event_at, e.operator_id, e.request_key, e.created_at
+    FROM attendance_event e
+    JOIN reservation r ON r.id = e.reservation_id
+    WHERE e.event_type = 'CHECK_IN'
+      AND e.event_at &gt;= #{from} AND e.event_at &lt; #{to}
+      <if test="roomId != null">AND r.room_id = #{roomId}</if>
+    ORDER BY e.event_at, e.id
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.reservation.domain.AttendanceEvent"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO attendance_event (reservation_id, event_type, event_at, operator_id, request_key, created_at)
+    VALUES (#{reservationId}, #{eventType}, #{eventAt}, #{operatorId}, #{requestKey}, #{createdAt})
+  </insert>
+
+  <select id="countByReservation" resultType="long">
+    SELECT COUNT(*) FROM attendance_event WHERE reservation_id = #{reservationId}
+  </select>
+</mapper>

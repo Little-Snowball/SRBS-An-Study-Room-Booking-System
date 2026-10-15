@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.rule.mapper.RuleVersionMapper">
+
+  <resultMap id="ruleVersionMap" type="edu.campus.studyroom.rule.domain.RuleVersion">
+    <id property="id" column="id"/>
+    <result property="versionNo" column="version_no"/>
+    <result property="configJson" column="config_json"/>
+    <result property="source" column="source"/>
+    <result property="createdBy" column="created_by"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <sql id="versionColumns">id, version_no, config_json, source, created_by, created_at</sql>
+
+  <select id="selectById" resultMap="ruleVersionMap">
+    SELECT <include refid="versionColumns"/> FROM rule_version WHERE id = #{id}
+  </select>
+
+  <select id="selectLatest" resultMap="ruleVersionMap">
+    SELECT <include refid="versionColumns"/> FROM rule_version ORDER BY version_no DESC LIMIT 1
+  </select>
+
+  <select id="selectMaxVersionNo" resultType="int">
+    SELECT MAX(version_no) FROM rule_version
+  </select>
+
+  <select id="selectPage" resultMap="ruleVersionMap">
+    SELECT <include refid="versionColumns"/> FROM rule_version
+    ORDER BY version_no DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countAll" resultType="long">
+    SELECT COUNT(*) FROM rule_version
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.rule.domain.RuleVersion"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO rule_version (version_no, config_json, source, created_by, created_at)
+    VALUES (#{versionNo}, #{configJson}, #{source}, #{createdBy}, #{createdAt})
+  </insert>
+</mapper>

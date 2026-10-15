@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.appeal.mapper.AppealMapper">
+
+  <resultMap id="appealMap" type="edu.campus.studyroom.appeal.domain.Appeal">
+    <id property="id" column="id"/>
+    <result property="violationId" column="violation_id"/>
+    <result property="userId" column="user_id"/>
+    <result property="reason" column="reason"/>
+    <result property="status" column="status"/>
+    <result property="reviewerId" column="reviewer_id"/>
+    <result property="reviewComment" column="review_comment"/>
+    <result property="submittedAt" column="submitted_at"/>
+    <result property="reviewedAt" column="reviewed_at"/>
+    <result property="version" column="version"/>
+  </resultMap>
+
+  <sql id="appealColumns">
+    id, violation_id, user_id, reason, status, reviewer_id, review_comment, submitted_at,
+    reviewed_at, version
+  </sql>
+
+  <select id="selectById" resultMap="appealMap">
+    SELECT <include refid="appealColumns"/> FROM appeal WHERE id = #{id}
+  </select>
+
+  <select id="selectByViolationId" resultMap="appealMap">
+    SELECT <include refid="appealColumns"/> FROM appeal WHERE violation_id = #{violationId}
+  </select>
+
+  <select id="selectByUserIdPage" resultMap="appealMap">
+    SELECT <include refid="appealColumns"/> FROM appeal
+    WHERE user_id = #{userId}
+    <if test="status != null">AND status = #{status}</if>
+    ORDER BY submitted_at DESC, id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countByUserId" resultType="long">
+    SELECT COUNT(*) FROM appeal
+    WHERE user_id = #{userId}
+    <if test="status != null">AND status = #{status}</if>
+  </select>
+
+  <select id="selectAdminPage" resultMap="appealMap">
+    SELECT a.* FROM appeal a
+    LEFT JOIN app_user u ON u.id = a.user_id
+    <where>
+      <if test="status != null">AND a.status = #{status}</if>
+      <if test="account != null and account != ''">AND u.account LIKE CONCAT(#{account}, '%')</if>
+      <if test="dateFrom != null">AND a.submitted_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND a.submitted_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+    ORDER BY a.submitted_at DESC, a.id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countAdminPage" resultType="long">
+    SELECT COUNT(*) FROM appeal a
+    LEFT JOIN app_user u ON u.id = a.user_id
+    <where>
+      <if test="status != null">AND a.status = #{status}</if>
+      <if test="account != null and account != ''">AND u.account LIKE CONCAT(#{account}, '%')</if>
+      <if test="dateFrom != null">AND a.submitted_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND a.submitted_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.appeal.domain.Appeal"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO appeal (violation_id, user_id, reason, status, reviewer_id, review_comment,
+                        submitted_at, reviewed_at, version)
+    VALUES (#{violationId}, #{userId}, #{reason}, #{status}, #{reviewerId}, #{reviewComment},
+            #{submittedAt}, #{reviewedAt}, 0)
+  </insert>
+
+  <!-- 乐观审核更新：WHERE 带期望 version，affectedRows 必须为 1 -->
+  <update id="updateReview">
+    UPDATE appeal
+    SET status = #{status},
+        reviewer_id = #{reviewerId},
+        review_comment = #{reviewComment},
+        reviewed_at = #{reviewedAt},
+        version = version + 1
+    WHERE id = #{id} AND version = #{expectedVersion}
+  </update>
+</mapper>

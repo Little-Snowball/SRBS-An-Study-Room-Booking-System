@@ -1,0 +1,13 @@
+# Test profile: only ever points at the studyroom_test database.
+# Never run tests against dev/prod URLs.
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:mysql://127.0.0.1:3306/studyroom_test?useUnicode=true&characterEncoding=utf8&connectionTimeZone=Asia/Shanghai&serverTimezone=Asia/Shanghai}
+    username: ${TEST_DB_USER:studyroom_app}
+    password: ${TEST_DB_PASSWORD:}
+  flyway:
+    enabled: true
+    clean-disabled: true
+
+app:
+  allow-demo-fixtures: true

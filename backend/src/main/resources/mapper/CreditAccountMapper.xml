@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.credit.mapper.CreditAccountMapper">
+
+  <resultMap id="creditAccountMap" type="edu.campus.studyroom.credit.domain.CreditAccount">
+    <id property="userId" column="user_id"/>
+    <result property="score" column="score"/>
+    <result property="version" column="version"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <select id="selectByUserId" resultMap="creditAccountMap">
+    SELECT user_id, score, version, updated_at FROM credit_account WHERE user_id = #{userId}
+  </select>
+
+  <select id="selectByUserIdForUpdate" resultMap="creditAccountMap">
+    SELECT user_id, score, version, updated_at FROM credit_account WHERE user_id = #{userId} FOR UPDATE
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.credit.domain.CreditAccount">
+    INSERT INTO credit_account (user_id, score, version, updated_at)
+    VALUES (#{userId}, #{score}, #{version}, #{updatedAt})
+  </insert>
+
+  <update id="updateScore">
+    UPDATE credit_account
+    SET score = #{newScore}, version = version + 1, updated_at = #{now}
+    WHERE user_id = #{userId} AND version = #{expectedVersion}
+  </update>
+</mapper>

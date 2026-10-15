@@ -1,0 +1,10 @@
+# Local development profile: connects to the local dev database.
+# Credentials come from environment variables (DB_USER / DB_PASSWORD),
+# never committed to Git.
+spring:
+  flyway:
+    enabled: true
+
+app:
+  allow-demo-fixtures: true
+  upload-dir: ${UPLOAD_DIR:D:/studyroom-data/uploads}

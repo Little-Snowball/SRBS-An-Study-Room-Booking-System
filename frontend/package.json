@@ -1,0 +1,31 @@
+{
+  "name": "studyroom-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Campus study room reservation system - Vue 3 frontend",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "vue-tsc --noEmit && vite build",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "vue": "3.5.44",
+    "vue-router": "4.6.3",
+    "pinia": "3.0.4",
+    "element-plus": "2.14.7",
+    "axios": "1.20.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.10",
+    "typescript": "5.9.3",
+    "vue-tsc": "3.1.1",
+    "vite": "7.1.12",
+    "vitest": "3.2.4",
+    "@playwright/test": "1.64.1",
+    "@types/node": "22.15.0"
+  }
+}

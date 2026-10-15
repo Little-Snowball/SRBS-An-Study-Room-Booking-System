@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.resource.mapper.StudyRoomMapper">
+
+  <resultMap id="studyRoomMap" type="edu.campus.studyroom.resource.domain.StudyRoom">
+    <id property="id" column="id"/>
+    <result property="code" column="code"/>
+    <result property="name" column="name"/>
+    <result property="campus" column="campus"/>
+    <result property="building" column="building"/>
+    <result property="floorNo" column="floor_no"/>
+    <result property="openTime" column="open_time"/>
+    <result property="closeTime" column="close_time"/>
+    <result property="rowsCount" column="rows_count"/>
+    <result property="colsCount" column="cols_count"/>
+    <result property="checkinCodeHash" column="checkin_code_hash"/>
+    <result property="status" column="status"/>
+    <result property="version" column="version"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <sql id="studyRoomColumns">
+    id, code, name, campus, building, floor_no, open_time, close_time, rows_count, cols_count,
+    checkin_code_hash, status, version, created_at, updated_at
+  </sql>
+
+  <select id="selectById" resultMap="studyRoomMap">
+    SELECT <include refid="studyRoomColumns"/> FROM study_room WHERE id = #{id}
+  </select>
+
+  <!-- 管理写事务第一行锁定：guard 之后再锁房间行，避免半完成提交 -->
+  <select id="selectByIdForUpdate" resultMap="studyRoomMap">
+    SELECT <include refid="studyRoomColumns"/> FROM study_room WHERE id = #{id} FOR UPDATE
+  </select>
+
+  <select id="selectByCode" resultMap="studyRoomMap">
+    SELECT <include refid="studyRoomColumns"/> FROM study_room WHERE code = #{code}
+  </select>
+
+  <!--
+    分页查询：campus/building 为前缀模糊匹配，通配符 %/_ 由调用方转义为 !% / !_，
+    SQL 侧 ESCAPE '!' 声明转义符，请求字符串永远以预编译参数进入。
+  -->
+  <select id="selectPage" resultMap="studyRoomMap">
+    SELECT <include refid="studyRoomColumns"/> FROM study_room
+    <where>
+      <if test="campus != null and campus != ''">AND campus LIKE CONCAT(#{campus}, '%') ESCAPE '!'</if>
+      <if test="building != null and building != ''">AND building LIKE CONCAT(#{building}, '%') ESCAPE '!'</if>
+      <if test="status != null">AND status = #{status}</if>
+    </where>
+    ORDER BY id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countPage" resultType="long">
+    SELECT COUNT(*) FROM study_room
+    <where>
+      <if test="campus != null and campus != ''">AND campus LIKE CONCAT(#{campus}, '%') ESCAPE '!'</if>
+      <if test="building != null and building != ''">AND building LIKE CONCAT(#{building}, '%') ESCAPE '!'</if>
+      <if test="status != null">AND status = #{status}</if>
+    </where>
+  </select>
+
+  <select id="selectAll" resultMap="studyRoomMap">
+    SELECT <include refid="studyRoomColumns"/> FROM study_room ORDER BY id
+  </select>
+
+  <select id="selectByIds" resultMap="studyRoomMap">
+    SELECT <include refid="studyRoomColumns"/> FROM study_room
+    WHERE id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.resource.domain.StudyRoom"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO study_room (code, name, campus, building, floor_no, open_time, close_time,
+                            rows_count, cols_count, checkin_code_hash, status, version,
+                            created_at, updated_at)
+    VALUES (#{code}, #{name}, #{campus}, #{building}, #{floorNo}, #{openTime}, #{closeTime},
+            #{rowsCount}, #{colsCount}, #{checkinCodeHash}, #{status}, 0,
+            #{createdAt}, #{updatedAt})
+  </insert>
+
+  <!-- 乐观更新可编辑基础信息；WHERE 带期望 version，affectedRows 必须为 1 -->
+  <update id="updateBasics">
+    UPDATE study_room
+    SET name = #{name},
+        campus = #{campus},
+        building = #{building},
+        floor_no = #{floorNo},
+        open_time = #{openTime},
+        close_time = #{closeTime},
+        rows_count = #{rowsCount},
+        cols_count = #{colsCount},
+        version = version + 1,
+        updated_at = #{now}
+    WHERE id = #{id} AND version = #{expectedVersion}
+  </update>
+
+  <update id="updateStatus">
+    UPDATE study_room
+    SET status = #{status},
+        version = version + 1,
+        updated_at = #{now}
+    WHERE id = #{id} AND version = #{expectedVersion}
+  </update>
+
+  <!-- 现场码哈希更新：旧哈希被整体替换，旧码立即失效；哈希绝不外泄 -->
+  <update id="updateCheckinCode">
+    UPDATE study_room
+    SET checkin_code_hash = #{checkinCodeHash},
+        version = version + 1,
+        updated_at = #{now}
+    WHERE id = #{id} AND version = #{expectedVersion}
+  </update>
+</mapper>

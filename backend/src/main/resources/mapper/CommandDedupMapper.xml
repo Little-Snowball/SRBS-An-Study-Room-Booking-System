@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.common.mapper.CommandDedupMapper">
+
+  <resultMap id="commandDedupMap" type="edu.campus.studyroom.common.domain.CommandDedup">
+    <id property="id" column="id"/>
+    <result property="userId" column="user_id"/>
+    <result property="commandType" column="command_type"/>
+    <result property="requestKey" column="request_key"/>
+    <result property="requestHash" column="request_hash"/>
+    <result property="resultType" column="result_type"/>
+    <result property="resultId" column="result_id"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <select id="selectByKey" resultMap="commandDedupMap">
+    SELECT id, user_id, command_type, request_key, request_hash, result_type, result_id, created_at
+    FROM command_dedup
+    WHERE user_id = #{userId} AND command_type = #{commandType} AND request_key = #{requestKey}
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.common.domain.CommandDedup"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO command_dedup (user_id, command_type, request_key, request_hash, result_type, result_id, created_at)
+    VALUES (#{userId}, #{commandType}, #{requestKey}, #{requestHash}, #{resultType}, #{resultId}, #{createdAt})
+  </insert>
+
+  <select id="selectOlderThan" resultMap="commandDedupMap">
+    SELECT id, user_id, command_type, request_key, request_hash, result_type, result_id, created_at
+    FROM command_dedup WHERE created_at &lt; #{before} ORDER BY id LIMIT 500
+  </select>
+
+  <delete id="deleteById">
+    DELETE FROM command_dedup WHERE id = #{id}
+  </delete>
+</mapper>

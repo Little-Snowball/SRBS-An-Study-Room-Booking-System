@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.credit.mapper.CreditLogMapper">
+
+  <resultMap id="creditLogMap" type="edu.campus.studyroom.credit.domain.CreditLog">
+    <id property="id" column="id"/>
+    <result property="userId" column="user_id"/>
+    <result property="reservationId" column="reservation_id"/>
+    <result property="violationId" column="violation_id"/>
+    <result property="eventKey" column="event_key"/>
+    <result property="type" column="type"/>
+    <result property="requestedDelta" column="requested_delta"/>
+    <result property="actualDelta" column="actual_delta"/>
+    <result property="cappedDelta" column="capped_delta"/>
+    <result property="balanceBefore" column="balance_before"/>
+    <result property="balanceAfter" column="balance_after"/>
+    <result property="sourceLogId" column="source_log_id"/>
+    <result property="reason" column="reason"/>
+    <result property="operatorId" column="operator_id"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <sql id="logColumns">
+    id, user_id, reservation_id, violation_id, event_key, type, requested_delta, actual_delta,
+    capped_delta, balance_before, balance_after, source_log_id, reason, operator_id, created_at
+  </sql>
+
+  <select id="selectById" resultMap="creditLogMap">
+    SELECT <include refid="logColumns"/> FROM credit_log WHERE id = #{id}
+  </select>
+
+  <select id="selectByEventKey" resultMap="creditLogMap">
+    SELECT <include refid="logColumns"/> FROM credit_log WHERE event_key = #{eventKey}
+  </select>
+
+  <select id="selectByUserIdPage" resultMap="creditLogMap">
+    SELECT <include refid="logColumns"/> FROM credit_log
+    WHERE user_id = #{userId}
+    <if test="type != null">AND type = #{type}</if>
+    ORDER BY id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countByUserId" resultType="long">
+    SELECT COUNT(*) FROM credit_log
+    WHERE user_id = #{userId}
+    <if test="type != null">AND type = #{type}</if>
+  </select>
+
+  <select id="selectByReservationId" resultMap="creditLogMap">
+    SELECT <include refid="logColumns"/> FROM credit_log
+    WHERE reservation_id = #{reservationId} ORDER BY id
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.credit.domain.CreditLog"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO credit_log (user_id, reservation_id, violation_id, event_key, type, requested_delta,
+                            actual_delta, capped_delta, balance_before, balance_after, source_log_id,
+                            reason, operator_id, created_at)
+    VALUES (#{userId}, #{reservationId}, #{violationId}, #{eventKey}, #{type}, #{requestedDelta},
+            #{actualDelta}, #{cappedDelta}, #{balanceBefore}, #{balanceAfter}, #{sourceLogId},
+            #{reason}, #{operatorId}, #{createdAt})
+  </insert>
+</mapper>

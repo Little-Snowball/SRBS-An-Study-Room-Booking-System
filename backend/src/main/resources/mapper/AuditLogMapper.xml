@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.audit.mapper.AuditLogMapper">
+
+  <resultMap id="auditLogMap" type="edu.campus.studyroom.audit.domain.AuditLog">
+    <id property="id" column="id"/>
+    <result property="actorId" column="actor_id"/>
+    <result property="action" column="action"/>
+    <result property="targetType" column="target_type"/>
+    <result property="targetId" column="target_id"/>
+    <result property="traceId" column="trace_id"/>
+    <result property="summary" column="summary"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.audit.domain.AuditLog"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO audit_log (actor_id, action, target_type, target_id, trace_id, summary, created_at)
+    VALUES (#{actorId}, #{action}, #{targetType}, #{targetId}, #{traceId}, #{summary}, #{createdAt})
+  </insert>
+
+  <select id="selectPage" resultMap="auditLogMap">
+    SELECT id, actor_id, action, target_type, target_id, trace_id, summary, created_at
+    FROM audit_log
+    <where>
+      <if test="actorId != null">AND actor_id = #{actorId}</if>
+      <if test="action != null and action != ''">AND action = #{action}</if>
+      <if test="targetType != null and targetType != ''">AND target_type = #{targetType}</if>
+      <if test="dateFrom != null">AND created_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+    ORDER BY id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countPage" resultType="long">
+    SELECT COUNT(*) FROM audit_log
+    <where>
+      <if test="actorId != null">AND actor_id = #{actorId}</if>
+      <if test="action != null and action != ''">AND action = #{action}</if>
+      <if test="targetType != null and targetType != ''">AND target_type = #{targetType}</if>
+      <if test="dateFrom != null">AND created_at &gt;= #{dateFrom}</if>
+      <if test="dateTo != null">AND created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
+    </where>
+  </select>
+</mapper>

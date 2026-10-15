@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.settlement.mapper.SettlementResultMapper">
+
+  <resultMap id="settlementResultMap" type="edu.campus.studyroom.settlement.domain.SettlementResult">
+    <id property="reservationId" column="reservation_id"/>
+    <result property="terminalEventKey" column="terminal_event_key"/>
+    <result property="reason" column="reason"/>
+    <result property="finishedAt" column="finished_at"/>
+    <result property="eligibleSeconds" column="eligible_seconds"/>
+    <result property="rewardRequested" column="reward_requested"/>
+    <result property="rewardActual" column="reward_actual"/>
+    <result property="creditLogId" column="credit_log_id"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <sql id="settlementResultColumns">
+    reservation_id, terminal_event_key, reason, finished_at, eligible_seconds,
+    reward_requested, reward_actual, credit_log_id, created_at
+  </sql>
+
+  <select id="selectByReservationId" resultMap="settlementResultMap">
+    SELECT <include refid="settlementResultColumns"/> FROM settlement_result
+    WHERE reservation_id = #{reservationId}
+  </select>
+
+  <select id="selectByReservationIds" resultMap="settlementResultMap">
+    SELECT <include refid="settlementResultColumns"/> FROM settlement_result
+    WHERE reservation_id IN
+    <foreach item="reservationId" collection="reservationIds" open="(" separator="," close=")">
+      #{reservationId}
+    </foreach>
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.settlement.domain.SettlementResult">
+    INSERT INTO settlement_result (reservation_id, terminal_event_key, reason, finished_at,
+                                   eligible_seconds, reward_requested, reward_actual, credit_log_id, created_at)
+    VALUES (#{reservationId}, #{terminalEventKey}, #{reason}, #{finishedAt}, #{eligibleSeconds},
+            #{rewardRequested}, #{rewardActual}, #{creditLogId}, #{createdAt})
+  </insert>
+</mapper>

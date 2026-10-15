@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.notice.mapper.NoticeMapper">
+
+  <resultMap id="noticeMap" type="edu.campus.studyroom.notice.domain.Notice">
+    <id property="id" column="id"/>
+    <result property="title" column="title"/>
+    <result property="content" column="content"/>
+    <result property="pinned" column="pinned"/>
+    <result property="status" column="status"/>
+    <result property="publishedAt" column="published_at"/>
+    <result property="createdBy" column="created_by"/>
+    <result property="version" column="version"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <sql id="noticeColumns">
+    id, title, content, pinned, status, published_at, created_by, version, created_at, updated_at
+  </sql>
+
+  <select id="selectById" resultMap="noticeMap">
+    SELECT <include refid="noticeColumns"/> FROM notice WHERE id = #{id}
+  </select>
+
+  <!-- 公开列表：仅 PUBLISHED，置顶优先、发布时间倒序 -->
+  <select id="selectPublishedPage" resultMap="noticeMap">
+    SELECT <include refid="noticeColumns"/> FROM notice
+    WHERE status = 'PUBLISHED'
+    ORDER BY pinned DESC, published_at DESC, id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countPublished" resultType="long">
+    SELECT COUNT(*) FROM notice WHERE status = 'PUBLISHED'
+  </select>
+
+  <select id="selectAdminPage" resultMap="noticeMap">
+    SELECT <include refid="noticeColumns"/> FROM notice
+    <if test="status != null">WHERE status = #{status}</if>
+    ORDER BY updated_at DESC, id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countAdmin" resultType="long">
+    SELECT COUNT(*) FROM notice
+    <if test="status != null">WHERE status = #{status}</if>
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.notice.domain.Notice"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO notice (title, content, pinned, status, published_at, created_by, version,
+                        created_at, updated_at)
+    VALUES (#{title}, #{content}, #{pinned}, #{status}, #{publishedAt}, #{createdBy}, 0,
+            #{createdAt}, #{updatedAt})
+  </insert>
+
+  <!-- 乐观更新：WHERE 带期望 version，affectedRows 必须为 1 -->
+  <update id="update" parameterType="edu.campus.studyroom.notice.domain.Notice">
+    UPDATE notice
+    SET title = #{title},
+        content = #{content},
+        pinned = #{pinned},
+        updated_at = #{updatedAt},
+        version = version + 1
+    WHERE id = #{id} AND version = #{version}
+  </update>
+
+  <!-- 发布/撤回条件状态更新：published_at 随动作写入或清空 -->
+  <update id="updateStatus">
+    UPDATE notice
+    SET status = #{status},
+        published_at = #{publishedAt},
+        updated_at = #{now},
+        version = version + 1
+    WHERE id = #{id} AND version = #{expectedVersion}
+  </update>
+</mapper>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.notification.mapper.NotificationMapper">
+
+  <resultMap id="notificationMap" type="edu.campus.studyroom.notification.domain.Notification">
+    <id property="id" column="id"/>
+    <result property="userId" column="user_id"/>
+    <result property="eventKey" column="event_key"/>
+    <result property="type" column="type"/>
+    <result property="title" column="title"/>
+    <result property="content" column="content"/>
+    <result property="reservationId" column="reservation_id"/>
+    <result property="violationId" column="violation_id"/>
+    <result property="readAt" column="read_at"/>
+    <result property="publishedAt" column="published_at"/>
+  </resultMap>
+
+  <sql id="notificationColumns">
+    id, user_id, event_key, type, title, content, reservation_id, violation_id, read_at, published_at
+  </sql>
+
+  <select id="selectById" resultMap="notificationMap">
+    SELECT <include refid="notificationColumns"/> FROM notification WHERE id = #{id}
+  </select>
+
+  <!-- publish 幂等预检：同一 event_key 只发布一次 -->
+  <select id="selectByEventKey" resultMap="notificationMap">
+    SELECT <include refid="notificationColumns"/> FROM notification WHERE event_key = #{eventKey}
+  </select>
+
+  <!-- 我的通知：按发布时间倒序；unread=true 时仅看未读 -->
+  <select id="selectByUserIdPage" resultMap="notificationMap">
+    SELECT <include refid="notificationColumns"/> FROM notification
+    WHERE user_id = #{userId}
+    <if test="unread != null and unread">AND read_at IS NULL</if>
+    ORDER BY published_at DESC, id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countByUserId" resultType="long">
+    SELECT COUNT(*) FROM notification
+    WHERE user_id = #{userId}
+    <if test="unread != null and unread">AND read_at IS NULL</if>
+  </select>
+
+  <select id="countUnread" resultType="long">
+    SELECT COUNT(*) FROM notification WHERE user_id = #{userId} AND read_at IS NULL
+  </select>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.notification.domain.Notification"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO notification (user_id, event_key, type, title, content, reservation_id, violation_id,
+                              read_at, published_at)
+    VALUES (#{userId}, #{eventKey}, #{type}, #{title}, #{content}, #{reservationId}, #{violationId},
+            #{readAt}, #{publishedAt})
+  </insert>
+
+  <!-- 归属校验 + 仅未读可标记：重复已读时 affectedRows=0，无副作用 -->
+  <update id="markRead">
+    UPDATE notification SET read_at = #{readAt}
+    WHERE id = #{id} AND user_id = #{userId} AND read_at IS NULL
+  </update>
+</mapper>

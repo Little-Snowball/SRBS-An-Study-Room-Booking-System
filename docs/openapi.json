@@ -1,0 +1,399 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "高校自习室预约与考勤管理系统 API",
+    "version": "1.0.0",
+    "description": "REST 契约冻结版。前缀 /api/v1；成功信封 {code,message,data,traceId,serverTime}；失败 {code,message,data:null,traceId,serverTime,errorDetails}。所有 ID 为字符串，时间均为带 +08:00 偏移的 ISO-8601。核心写请求要求 Idempotency-Key: UUID 头。"
+  },
+  "servers": [{ "url": "/api/v1" }],
+  "tags": [
+    { "name": "auth" },
+    { "name": "me" },
+    { "name": "rooms" },
+    { "name": "reservations" },
+    { "name": "appeals" },
+    { "name": "files" },
+    { "name": "notices" },
+    { "name": "admin" }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["auth"], "summary": "登录", "security": [],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } },
+        "responses": {
+          "200": { "description": "登录成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseLoginResponse" } } } },
+          "401": { "description": "学号或密码错误（统一提示）", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } },
+          "422": { "description": "账号禁用/黑名单/需改密", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } },
+          "429": { "description": "限流", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["auth"], "summary": "退出（撤销当前会话）", "security": [{ "bearer": [] }],
+        "responses": { "200": { "description": "成功，重复退出无副作用" } }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": ["auth"], "summary": "修改密码（成功后撤销全部会话）", "security": [{ "bearer": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" } } } },
+        "responses": { "200": { "description": "成功" }, "400": { "description": "参数不合法" } }
+      }
+    },
+    "/me": {
+      "get": {
+        "tags": ["me"], "summary": "当前用户概览", "security": [{ "bearer": [] }],
+        "responses": { "200": { "description": "用户资料", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseUserProfile" } } } } }
+      }
+    },
+    "/me/reservations": {
+      "get": {
+        "tags": ["me"], "summary": "我的预约列表", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/ReservationStatus" } },
+          { "name": "dateFrom", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "dateTo", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": { "200": { "description": "分页结果" } }
+      }
+    },
+    "/me/credits": {
+      "get": {
+        "tags": ["me"], "summary": "我的信用流水", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "分页结果" } }
+      }
+    },
+    "/me/notifications": {
+      "get": {
+        "tags": ["me"], "summary": "站内通知", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "unread", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "分页结果" } }
+      }
+    },
+    "/me/notifications/{id}/read": {
+      "post": {
+        "tags": ["me"], "summary": "标记已读（重复无副作用）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "成功" }, "404": { "description": "非本人通知" } }
+      }
+    },
+    "/notices": {
+      "get": {
+        "tags": ["notices"], "summary": "公开公告（仅 PUBLISHED，置顶优先）", "security": [],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": { "200": { "description": "分页结果" } }
+      }
+    },
+    "/notices/{id}": {
+      "get": {
+        "tags": ["notices"], "summary": "公告详情（未发布 404）", "security": [],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "公告" }, "404": { "description": "不存在或未发布" } }
+      }
+    },
+    "/rules/public": {
+      "get": {
+        "tags": ["rooms"], "summary": "生效规则（前端展示口径）", "security": [{ "bearer": [] }],
+        "responses": { "200": { "description": "规则" } }
+      }
+    },
+    "/rooms": {
+      "get": {
+        "tags": ["rooms"], "summary": "房间列表与匹配座位计数", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "campus", "in": "query", "schema": { "type": "string" } },
+          { "name": "building", "in": "query", "schema": { "type": "string" } },
+          { "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "startAt", "in": "query", "schema": { "type": "string" } },
+          { "name": "endAt", "in": "query", "schema": { "type": "string" } },
+          { "name": "hasPower", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "nearWindow", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "quietZone", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "分页结果" }, "422": { "description": "日期/时段不合法" } }
+      }
+    },
+    "/rooms/{id}": {
+      "get": {
+        "tags": ["rooms"], "summary": "房间详情", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "房间" }, "404": { "description": "不存在" } }
+      }
+    },
+    "/rooms/{id}/availability": {
+      "get": {
+        "tags": ["rooms"], "summary": "座位可用性（格点布局）", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "startAt", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "endAt", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "座位布局与派生状态" }, "422": { "description": "时段不合法" } }
+      }
+    },
+    "/reservations": {
+      "post": {
+        "tags": ["reservations"], "summary": "创建预约", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateReservationRequest" } } } },
+        "responses": {
+          "201": { "description": "创建成功" },
+          "409": { "description": "SLOT_CONFLICT / USER_TIME_CONFLICT / IDEMPOTENCY_KEY_REUSED" },
+          "422": { "description": "CREDIT_INSUFFICIENT / OUTSIDE_OPEN_HOURS / INVALID_TIME_GRID / ACCOUNT_DISABLED / ACCOUNT_BLOCKED" },
+          "503": { "description": "BUSY_RETRY" }
+        }
+      }
+    },
+    "/reservations/{id}": {
+      "get": {
+        "tags": ["reservations"], "summary": "预约详情（本人/管理员）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "详情" }, "404": { "description": "不存在或非本人" } }
+      }
+    },
+    "/reservations/{id}/cancel": {
+      "post": {
+        "tags": ["reservations"], "summary": "取消预约", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "已取消" }, "422": { "description": "CANCEL_WINDOW_CLOSED" }, "409": { "description": "INVALID_STATE" } }
+      }
+    },
+    "/reservations/{id}/check-in": {
+      "post": {
+        "tags": ["reservations"], "summary": "现场码签到", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CheckInRequest" } } } },
+        "responses": {
+          "200": { "description": "签到成功" },
+          "422": { "description": "CHECKIN_WINDOW_CLOSED / INVALID_CHECKIN_CODE / SEAT_CURRENTLY_OCCUPIED" },
+          "429": { "description": "RATE_LIMITED" }
+        }
+      }
+    },
+    "/reservations/{id}/leave": {
+      "post": {
+        "tags": ["reservations"], "summary": "暂离", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "暂离成功" }, "422": { "description": "LEAVE_LIMIT_REACHED" } }
+      }
+    },
+    "/reservations/{id}/return": {
+      "post": {
+        "tags": ["reservations"], "summary": "回座", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "回座成功" }, "422": { "description": "暂离已超时" } }
+      }
+    },
+    "/reservations/{id}/check-out": {
+      "post": {
+        "tags": ["reservations"], "summary": "主动签退", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "结算结果（有效分钟/奖励请求值/实际值）" }, "409": { "description": "INVALID_STATE" } }
+      }
+    },
+    "/files": {
+      "post": {
+        "tags": ["files"], "summary": "上传申诉凭证（JPEG/PNG，<=5MiB）", "security": [{ "bearer": [] }],
+        "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } } } } } },
+        "responses": { "201": { "description": "fileId/mimeType/size" }, "400": { "description": "格式/大小/像素不合法" } }
+      }
+    },
+    "/files/{id}/content": {
+      "get": {
+        "tags": ["files"], "summary": "私有读取凭证（所有者/管理员）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "图片二进制" }, "404": { "description": "非本人或不存在" } }
+      }
+    },
+    "/appeals": {
+      "post": {
+        "tags": ["appeals"], "summary": "提交申诉", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitAppealRequest" } } } },
+        "responses": { "201": { "description": "已提交" }, "409": { "description": "APPEAL_EXISTS" }, "422": { "description": "APPEAL_EXPIRED" } }
+      }
+    },
+    "/me/appeals": {
+      "get": {
+        "tags": ["appeals"], "summary": "我的申诉", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "分页结果" } }
+      }
+    },
+    "/appeals/{id}": {
+      "get": {
+        "tags": ["appeals"], "summary": "申诉详情（本人/管理员）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "详情" }, "404": { "description": "非本人" } }
+      }
+    },
+    "/admin/rooms": {
+      "get": { "tags": ["admin"], "summary": "房间查询", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } },
+      "post": {
+        "tags": ["admin"], "summary": "新建房间", "security": [{ "bearer": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateRoomRequest" } } } },
+        "responses": { "201": { "description": "创建成功" }, "409": { "description": "编码已存在" } }
+      }
+    },
+    "/admin/rooms/{id}": {
+      "patch": {
+        "tags": ["admin"], "summary": "编辑房间（缩短营业时间必须给 orderPolicy）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "成功" }, "409": { "description": "版本冲突" } }
+      }
+    },
+    "/admin/rooms/{id}/status": {
+      "post": {
+        "tags": ["admin"], "summary": "闭馆/开放（含订单处理策略）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "affectedCancelled/affectedKept/affectedEnded" }, "503": { "description": "BUSY_RETRY（订单过多请低峰操作）" } }
+      }
+    },
+    "/admin/rooms/{id}/checkin-code": {
+      "post": {
+        "tags": ["admin"], "summary": "重设现场码（响应不含码）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "成功" } }
+      }
+    },
+    "/admin/rooms/{id}/seats": {
+      "get": { "tags": ["admin"], "summary": "座位布局", "security": [{ "bearer": [] }], "responses": { "200": { "description": "布局" } } }
+    },
+    "/admin/rooms/{id}/seats/batch": {
+      "post": {
+        "tags": ["admin"], "summary": "批量生成座位（冲突整批 409）", "security": [{ "bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "201": { "description": "生成成功" }, "409": { "description": "重名/越界/超总数" } }
+      }
+    },
+    "/admin/seats/{id}": {
+      "patch": { "tags": ["admin"], "summary": "座位标签编辑", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" } } }
+    },
+    "/admin/seats/{id}/status": {
+      "post": { "tags": ["admin"], "summary": "座位停用/恢复", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" } } }
+    },
+    "/admin/reservations": {
+      "get": { "tags": ["admin"], "summary": "预约查询（多条件）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } }
+    },
+    "/admin/users": {
+      "get": { "tags": ["admin"], "summary": "学生查询", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } },
+      "post": {
+        "tags": ["admin"], "summary": "创建学生（返回一次性密码）", "security": [{ "bearer": [] }],
+        "responses": { "201": { "description": "用户+一次性密码（仅本次展示）" }, "409": { "description": "学号已存在" } }
+      }
+    },
+    "/admin/users/{id}/status": {
+      "post": { "tags": ["admin"], "summary": "启用/禁用", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" }, "422": { "description": "需确认无责终止 confirmTerminate" } } }
+    },
+    "/admin/users/{id}/block": {
+      "post": { "tags": ["admin"], "summary": "黑名单开关", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" } } }
+    },
+    "/admin/users/{id}/reset-password": {
+      "post": { "tags": ["admin"], "summary": "重置密码（一次性密码仅一次展示）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "一次性密码或 credentialAlreadyIssued" } } }
+    },
+    "/admin/users/{id}/credit-adjust": {
+      "post": { "tags": ["admin"], "summary": "信用人工调整", "security": [{ "bearer": [] }], "responses": { "200": { "description": "前后余额与流水 ID" } } }
+    },
+    "/admin/rules": {
+      "get": { "tags": ["admin"], "summary": "生效规则", "security": [{ "bearer": [] }], "responses": { "200": { "description": "规则" } } },
+      "post": { "tags": ["admin"], "summary": "发布新规则（全量+baseVersion）", "security": [{ "bearer": [] }], "responses": { "201": { "description": "新版本" }, "409": { "description": "baseVersion 过期" }, "422": { "description": "字段范围不合法" } } }
+    },
+    "/admin/rules/history": {
+      "get": { "tags": ["admin"], "summary": "规则历史（只读）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } }
+    },
+    "/admin/appeals": {
+      "get": { "tags": ["admin"], "summary": "申诉列表", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } }
+    },
+    "/admin/appeals/{id}/review": {
+      "post": {
+        "tags": ["admin"], "summary": "审核申诉", "security": [{ "bearer": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "审核结果" }, "409": { "description": "重复/反向决定" } }
+      }
+    },
+    "/admin/notices": {
+      "get": { "tags": ["admin"], "summary": "公告查询", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } },
+      "post": { "tags": ["admin"], "summary": "创建草稿", "security": [{ "bearer": [] }], "responses": { "201": { "description": "草稿" } } }
+    },
+    "/admin/notices/{id}": {
+      "patch": { "tags": ["admin"], "summary": "编辑公告", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" } } }
+    },
+    "/admin/notices/{id}/publish": {
+      "post": { "tags": ["admin"], "summary": "发布", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" } } }
+    },
+    "/admin/notices/{id}/withdraw": {
+      "post": { "tags": ["admin"], "summary": "撤回（不物理删除）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" } } }
+    },
+    "/admin/stats/overview": {
+      "get": { "tags": ["admin"], "summary": "运营概览", "security": [{ "bearer": [] }], "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }], "responses": { "200": { "description": "指标" } } }
+    },
+    "/admin/stats/traffic": {
+      "get": { "tags": ["admin"], "summary": "30 分钟签到流量", "security": [{ "bearer": [] }], "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "roomId", "in": "query", "schema": { "type": "string" } }], "responses": { "200": { "description": "48 桶" } } }
+    },
+    "/admin/stats/room-usage": {
+      "get": { "tags": ["admin"], "summary": "房间使用率排行（<=31 天）", "security": [{ "bearer": [] }], "parameters": [{ "name": "dateFrom", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "dateTo", "in": "query", "schema": { "type": "string", "format": "date" } }], "responses": { "200": { "description": "排行" } } }
+    },
+    "/admin/audits": {
+      "get": { "tags": ["admin"], "summary": "审计日志（<=31 天）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "ApiResponseLoginResponse": { "type": "object", "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "data": { "$ref": "#/components/schemas/LoginResponse" }, "traceId": { "type": "string" }, "serverTime": { "type": "string" } } },
+      "ApiResponseUserProfile": { "type": "object", "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "data": { "$ref": "#/components/schemas/UserProfile" }, "traceId": { "type": "string" }, "serverTime": { "type": "string" } } },
+      "ErrorEnvelope": { "type": "object", "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "data": { "type": "null" }, "traceId": { "type": "string" }, "serverTime": { "type": "string" }, "errorDetails": {} } },
+      "LoginRequest": { "type": "object", "required": ["account", "password"], "properties": { "account": { "type": "string" }, "password": { "type": "string" } } },
+      "ChangePasswordRequest": { "type": "object", "required": ["oldPassword", "newPassword"], "properties": { "oldPassword": { "type": "string" }, "newPassword": { "type": "string", "minLength": 12, "maxLength": 64 } } },
+      "LoginResponse": { "type": "object", "properties": { "accessToken": { "type": "string" }, "expiresAt": { "type": "string" }, "user": { "$ref": "#/components/schemas/UserProfile" }, "mustChangePassword": { "type": "boolean" } } },
+      "UserProfile": { "type": "object", "properties": { "id": { "type": "string" }, "account": { "type": "string" }, "name": { "type": "string" }, "college": { "type": "string" }, "role": { "enum": ["STUDENT", "ADMIN"] }, "creditScore": { "type": "integer" }, "creditRestricted": { "type": "boolean" }, "blocked": { "type": "boolean" } } },
+      "ReservationStatus": { "type": "string", "enum": ["RESERVED", "IN_USE", "LEFT_TEMP", "COMPLETED", "CANCELLED", "VIOLATED"] },
+      "CreateReservationRequest": { "type": "object", "required": ["seatId", "startAt", "endAt"], "properties": { "seatId": { "type": "string" }, "startAt": { "type": "string", "example": "2026-10-15T09:00:00+08:00" }, "endAt": { "type": "string", "example": "2026-10-15T11:30:00+08:00" } } },
+      "CheckInRequest": { "type": "object", "required": ["code"], "properties": { "code": { "type": "string", "pattern": "^[0-9]{6}$" } } },
+      "SubmitAppealRequest": { "type": "object", "required": ["violationId", "reason"], "properties": { "violationId": { "type": "string" }, "reason": { "type": "string", "minLength": 10, "maxLength": 1000 }, "fileIds": { "type": "array", "items": { "type": "string" }, "maxItems": 3 } } },
+      "CreateRoomRequest": { "type": "object", "required": ["code", "name", "campus", "building", "floorNo", "openTime", "closeTime", "rows", "cols", "checkinCode"], "properties": { "code": { "type": "string" }, "name": { "type": "string" }, "campus": { "type": "string" }, "building": { "type": "string" }, "floorNo": { "type": "integer" }, "openTime": { "type": "string", "example": "07:00" }, "closeTime": { "type": "string", "example": "22:30" }, "rows": { "type": "integer", "maximum": 100 }, "cols": { "type": "integer", "maximum": 100 }, "checkinCode": { "type": "string", "pattern": "^[0-9]{6}$" } } }
+    }
+  }
+}

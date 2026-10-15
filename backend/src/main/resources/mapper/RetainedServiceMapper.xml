@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.campus.studyroom.resource.mapper.RetainedServiceMapper">
+
+  <resultMap id="retainedServiceMap" type="edu.campus.studyroom.resource.domain.RetainedService">
+    <id property="id" column="id"/>
+    <result property="reservationId" column="reservation_id"/>
+    <result property="seatId" column="seat_id"/>
+    <result property="fromAt" column="from_at"/>
+    <result property="toAt" column="to_at"/>
+    <result property="causeEventId" column="cause_event_id"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <sql id="retainedColumns">
+    id, reservation_id, seat_id, from_at, to_at, cause_event_id, created_at
+  </sql>
+
+  <insert id="insert" parameterType="edu.campus.studyroom.resource.domain.RetainedService"
+          useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO retained_service (reservation_id, seat_id, from_at, to_at, cause_event_id, created_at)
+    VALUES (#{reservationId}, #{seatId}, #{fromAt}, #{toAt}, #{causeEventId}, #{createdAt})
+  </insert>
+
+  <select id="selectByReservationId" resultMap="retainedServiceMap">
+    SELECT <include refid="retainedColumns"/> FROM retained_service
+    WHERE reservation_id = #{reservationId} ORDER BY from_at, id
+  </select>
+
+  <!-- 与 [from, to) 有交集（from_at &lt; to 且 to_at &gt; from）的保留区间 -->
+  <select id="selectBySeatIdsBetween" resultMap="retainedServiceMap">
+    SELECT <include refid="retainedColumns"/> FROM retained_service
+    WHERE seat_id IN
+    <foreach collection="seatIds" item="seatId" open="(" separator="," close=")">#{seatId}</foreach>
+    AND from_at &lt; #{to} AND to_at &gt; #{from}
+    ORDER BY from_at, id
+  </select>
+</mapper>
