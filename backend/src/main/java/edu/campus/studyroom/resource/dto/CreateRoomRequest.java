@@ -15,7 +15,6 @@ public record CreateRoomRequest(
         @NotBlank @Size(max = 100) String name,
         @NotBlank @Size(max = 64) String campus,
         @NotBlank @Size(max = 64) String building,
-        @Min(1) @Max(100) int floorNo,
         @NotNull @com.fasterxml.jackson.annotation.JsonFormat(pattern = "HH:mm") LocalTime openTime,
         @NotNull @com.fasterxml.jackson.annotation.JsonFormat(pattern = "HH:mm") LocalTime closeTime,
         @Min(1) @Max(100) int rows,

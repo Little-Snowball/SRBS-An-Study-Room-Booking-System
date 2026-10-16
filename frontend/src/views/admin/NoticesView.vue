@@ -166,14 +166,14 @@
         撤回后公告对学生不可见，已发布记录保留以备审计。标题：{{ withdrawRow?.title }}
       </p>
       <el-form label-width="72px">
-        <el-form-item label="撤回原因" required>
+        <el-form-item label="撤回原因">
           <el-input
             v-model="withdrawReason"
             type="textarea"
             :rows="2"
             maxlength="200"
             show-word-limit
-            placeholder="请填写撤回原因，将记入审计日志"
+            placeholder="撤回原因（选填），将记入审计日志"
           />
         </el-form-item>
       </el-form>
@@ -367,10 +367,6 @@ function openWithdrawDialog(row: AdminNoticeItem): void {
 
 async function confirmWithdraw(): Promise<void> {
   if (!withdrawRow.value) return
-  if (!withdrawReason.value.trim()) {
-    withdrawError.value = '请填写撤回原因'
-    return
-  }
   submitting.value = true
   withdrawError.value = ''
   try {

@@ -26,4 +26,7 @@ public interface FileObjectMapper {
     List<FileObject> selectExpiredTemp(@Param("before") LocalDateTime before);
 
     int deleteById(@Param("id") Long id);
+
+    /** 物理删除该用户上传的全部文件记录（学生账号删除时使用，调用方保证无申诉引用）。 */
+    int deleteByOwner(@Param("ownerId") Long ownerId);
 }

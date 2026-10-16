@@ -67,7 +67,7 @@ public class JacksonConfig {
                     }
                 }
             });
-            builder.modules(module);
+            builder.modules(module, new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
         };
     }
 }

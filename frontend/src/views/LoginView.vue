@@ -2,7 +2,6 @@
   <div class="login-page">
     <div class="login-card">
       <h1 class="login-title">高校自习室预约与考勤管理系统</h1>
-      <p class="login-subtitle">学生端登录</p>
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-form-item label="学号" prop="account">
           <el-input
@@ -78,10 +77,6 @@ async function onSubmit(): Promise<void> {
   submitting.value = true
   try {
     await auth.login(form.account, form.password)
-    if (auth.mustChangePassword) {
-      await router.replace('/change-password')
-      return
-    }
     const redirect = safeRedirect()
     if (redirect) {
       await router.replace(redirect)
@@ -117,14 +112,8 @@ async function onSubmit(): Promise<void> {
 .login-title {
   font-size: 18px;
   line-height: 1.4;
-  margin: 0 0 4px;
-  text-align: center;
-}
-.login-subtitle {
-  text-align: center;
-  color: var(--text-sub);
-  font-size: 13px;
   margin: 0 0 16px;
+  text-align: center;
 }
 .login-submit {
   width: 100%;

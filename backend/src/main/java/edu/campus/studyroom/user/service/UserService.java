@@ -1,7 +1,9 @@
 package edu.campus.studyroom.user.service;
 
 import edu.campus.studyroom.audit.AuditService;
+import edu.campus.studyroom.audit.mapper.AuditLogMapper;
 import edu.campus.studyroom.auth.mapper.AuthSessionMapper;
+import edu.campus.studyroom.appeal.mapper.AppealMapper;
 import edu.campus.studyroom.common.BusinessClock;
 import edu.campus.studyroom.common.BusinessException;
 import edu.campus.studyroom.common.ErrorCode;
@@ -19,7 +21,9 @@ import edu.campus.studyroom.credit.domain.CreditLog;
 import edu.campus.studyroom.credit.domain.CreditLogType;
 import edu.campus.studyroom.credit.mapper.CreditAccountMapper;
 import edu.campus.studyroom.credit.mapper.CreditLogMapper;
+import edu.campus.studyroom.file.mapper.FileObjectMapper;
 import edu.campus.studyroom.notification.NotificationService;
+import edu.campus.studyroom.notification.mapper.NotificationMapper;
 import edu.campus.studyroom.reservation.domain.Reservation;
 import edu.campus.studyroom.reservation.domain.TerminationReason;
 import edu.campus.studyroom.reservation.mapper.ReservationMapper;
@@ -27,6 +31,7 @@ import edu.campus.studyroom.rule.BusinessGuardLock;
 import edu.campus.studyroom.security.CurrentUserPrincipal;
 import edu.campus.studyroom.security.PasswordPolicy;
 import edu.campus.studyroom.settlement.SettlementService;
+import edu.campus.studyroom.settlement.mapper.ViolationMapper;
 import edu.campus.studyroom.user.domain.AppUser;
 import edu.campus.studyroom.user.domain.UserRole;
 import edu.campus.studyroom.user.domain.UserStatus;
@@ -37,6 +42,7 @@ import edu.campus.studyroom.user.dto.CreditAdjustRequest;
 import edu.campus.studyroom.user.dto.CreditAdjustResponse;
 import edu.campus.studyroom.user.dto.OneTimePasswordResponse;
 import edu.campus.studyroom.user.dto.ResetPasswordRequest;
+import edu.campus.studyroom.user.dto.UpdateStudentRequest;
 import edu.campus.studyroom.user.dto.UserBlockRequest;
 import edu.campus.studyroom.user.dto.UserStatusRequest;
 import edu.campus.studyroom.user.mapper.AppUserMapper;
@@ -66,7 +72,7 @@ public class UserService {
     private static final String UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
     private static final String LOWER = "abcdefghijkmnopqrstuvwxyz";
     private static final String DIGITS = "23456789";
-    private static final int ONE_TIME_PASSWORD_LENGTH = 16;
+    private static final int ONE_TIME_PASSWORD_LENGTH = 12;
 
     /** 新学生初始信用分（schema 满分，结构性常量而非可配置规则）。 */
     private static final int INITIAL_CREDIT = 100;
@@ -88,6 +94,11 @@ public class UserService {
     private final AuditService auditService;
     private final IdempotencyService idempotencyService;
     private final CommandDedupMapper commandDedupMapper;
+    private final ViolationMapper violationMapper;
+    private final AppealMapper appealMapper;
+    private final NotificationMapper notificationMapper;
+    private final FileObjectMapper fileObjectMapper;
+    private final AuditLogMapper auditLogMapper;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -97,7 +108,9 @@ public class UserService {
                        ReservationMapper reservationMapper, AuthSessionMapper authSessionMapper,
                        NotificationService notificationService, SettlementService settlementService,
                        AuditService auditService, IdempotencyService idempotencyService,
-                       CommandDedupMapper commandDedupMapper) {
+                       CommandDedupMapper commandDedupMapper, ViolationMapper violationMapper,
+                       AppealMapper appealMapper, NotificationMapper notificationMapper,
+                       FileObjectMapper fileObjectMapper, AuditLogMapper auditLogMapper) {
         this.businessGuardLock = businessGuardLock;
         this.clock = clock;
         this.passwordPolicy = passwordPolicy;
@@ -112,6 +125,11 @@ public class UserService {
         this.auditService = auditService;
         this.idempotencyService = idempotencyService;
         this.commandDedupMapper = commandDedupMapper;
+        this.violationMapper = violationMapper;
+        this.appealMapper = appealMapper;
+        this.notificationMapper = notificationMapper;
+        this.fileObjectMapper = fileObjectMapper;
+        this.auditLogMapper = auditLogMapper;
     }
 
     // ------------------------------------------------------------ 查询
@@ -130,9 +148,8 @@ public class UserService {
     // ------------------------------------------------------------ 创建学生
 
     /**
-     * 创建学生账号。学号 trim 后大写并查重（409 SLOT_CONFLICT）；服务端生成 16 位
-     * 随机一次性密码（SecureRandom，字母+数字，避开易混字符），hash 后入库，
-     * mustChangePassword=true 强制首登改密；同步创建满分信用账户。
+     * 创建学生账号。学号 trim 后大写并查重（409 SLOT_CONFLICT）；服务端生成一次性密码，
+     * hash 后入库；同步创建满分信用账户。
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public CreateStudentResponse createStudent(CurrentUserPrincipal admin, CreateStudentRequest request) {
@@ -153,7 +170,7 @@ public class UserService {
         user.setRole(UserRole.STUDENT);
         user.setStatus(UserStatus.ACTIVE);
         user.setBlocked(false);
-        user.setMustChangePassword(true);
+        user.setMustChangePassword(false);
         user.setAuthVersion(0);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
@@ -172,6 +189,83 @@ public class UserService {
         return new CreateStudentResponse(toAdminItem(user), oneTimePassword);
     }
 
+    // ------------------------------------------------------------ 修改学生信息
+
+    /**
+     * 修改学生身份信息（学号/姓名/学院）。学号 trim 大写查重（409 SLOT_CONFLICT）；
+     * 学号变更时撤销该学生全部会话（身份变化即时失效）。行锁 + guard 序列化。
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AdminUserItem updateStudent(CurrentUserPrincipal admin, Long userId, UpdateStudentRequest request) {
+        businessGuardLock.lock();
+        LocalDateTime now = clock.nowLocal();
+
+        AppUser target = requireStudentTarget(admin, userId);
+
+        String account = request.account().trim().toUpperCase();
+        String name = request.name().trim();
+        if (account.isEmpty()) {
+            throw BusinessException.validation("学号不能为空");
+        }
+        if (name.isEmpty()) {
+            throw BusinessException.validation("姓名不能为空");
+        }
+        AppUser duplicate = appUserMapper.selectByAccount(account);
+        if (duplicate != null && !duplicate.getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.SLOT_CONFLICT, "学号已存在");
+        }
+        String college = request.college() == null || request.college().isBlank()
+                ? null : request.college().trim();
+
+        boolean accountChanged = !target.getAccount().equals(account);
+        appUserMapper.updateIdentity(userId, account, name, college, now);
+        if (accountChanged) {
+            authSessionMapper.revokeAllForUser(userId, now);
+        }
+
+        auditService.record(admin, "USER_UPDATE_IDENTITY", "USER", String.valueOf(userId),
+                "{\"account\":\"" + jsonEscape(account) + "\",\"accountChanged\":"
+                        + accountChanged + ",\"name\":\"" + jsonEscape(name) + "\"}");
+        return toAdminItem(appUserMapper.selectById(userId));
+    }
+
+    // ------------------------------------------------------------ 删除学生账号
+
+    /**
+     * 删除学生账号（历史不删铁律的守门实现）：存在预约/违约/信用流水/申诉任一
+     * 历史即 409 拒绝（提示改用「禁用」）。无历史时同事务清理会话、通知、幂等
+     * 记录、上传文件、信用账户，并将审计日志的操作人置空以保留审计历史。
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public void deleteStudent(CurrentUserPrincipal admin, Long userId) {
+        businessGuardLock.lock();
+
+        AppUser target = requireStudentTarget(admin, userId);
+
+        long reservations = reservationMapper.countByUserId(userId, null, null, null);
+        long violations = violationMapper.countByUserId(userId, null);
+        long creditLogs = creditLogMapper.countByUserId(userId, null);
+        long appeals = appealMapper.countByUserId(userId, null);
+        if (reservations > 0 || violations > 0 || creditLogs > 0 || appeals > 0) {
+            throw new BusinessException(ErrorCode.INVALID_STATE,
+                    "该学生存在业务历史（预约 " + reservations + "、违约 " + violations
+                            + "、信用流水 " + creditLogs + "、申诉 " + appeals
+                            + " 条），不可删除；历史记录必须保留，请改用「禁用」");
+        }
+
+        authSessionMapper.deleteByUserId(userId);
+        notificationMapper.deleteByUserId(userId);
+        commandDedupMapper.deleteByUserId(userId);
+        fileObjectMapper.deleteByOwner(userId);
+        creditAccountMapper.deleteByUserId(userId);
+        auditLogMapper.clearActor(userId);
+        appUserMapper.deleteById(userId);
+
+        auditService.record(admin, "USER_DELETE", "USER", String.valueOf(userId),
+                "{\"account\":\"" + jsonEscape(target.getAccount()) + "\",\"name\":\""
+                        + jsonEscape(target.getName()) + "\"}");
+    }
+
     // ------------------------------------------------------------ 启用/禁用
 
     /**
@@ -186,6 +280,7 @@ public class UserService {
         LocalDateTime now = clock.nowLocal();
 
         AppUser target = requireStudentTarget(admin, userId);
+        String reason = normalizeReason(request.reason());
 
         // guard 锁持有期间无其他写者可产生新订单，一次读取对确认与终止同时有效
         List<Reservation> effective = List.of();
@@ -204,14 +299,14 @@ public class UserService {
         }
 
         if (request.status() == UserStatus.DISABLED) {
-            disableSideEffects(userId, effective, request.reason(), now);
+            disableSideEffects(userId, effective, reason, now);
         }
 
         auditService.record(admin, "USER_STATUS_UPDATE", "USER", String.valueOf(userId),
                 "{\"status\":\"" + request.status() + "\",\"expectedAuthVersion\":"
                         + request.expectedAuthVersion() + ",\"confirmTerminate\":"
                         + request.confirmTerminate() + ",\"reason\":\""
-                        + jsonEscape(request.reason()) + "\"}");
+                        + jsonEscape(reason) + "\"}");
         return toAdminItem(appUserMapper.selectById(userId));
     }
 
@@ -229,6 +324,7 @@ public class UserService {
         LocalDateTime now = clock.nowLocal();
 
         AppUser target = requireStudentTarget(admin, userId);
+        String reason = normalizeReason(request.reason());
 
         int affected = appUserMapper.updateStatus(userId, target.getAuthVersion(),
                 target.getStatus(), request.blocked(), now);
@@ -238,13 +334,13 @@ public class UserService {
 
         if (request.blocked()) {
             blockSideEffects(userId,
-                    reservationMapper.selectEffectiveByUserId(userId), request.reason(), now);
+                    reservationMapper.selectEffectiveByUserId(userId), reason, now);
         }
 
         auditService.record(admin, request.blocked() ? "USER_BLOCK" : "USER_UNBLOCK", "USER",
                 String.valueOf(userId),
                 "{\"blocked\":" + request.blocked() + ",\"reason\":\""
-                        + jsonEscape(request.reason()) + "\"}");
+                        + jsonEscape(reason) + "\"}");
         return toAdminItem(appUserMapper.selectById(userId));
     }
 
@@ -253,9 +349,8 @@ public class UserService {
     /**
      * 重置学生密码（幂等）。同键重放不二次改密、不返回明文，仅回报
      * credentialAlreadyIssued=true；同键不同参数（含目标用户）抛
-     * IDEMPOTENCY_KEY_REUSED。首次重置生成 16 位随机一次性密码，
-     * mustChangePassword=true + auth_version bump + 撤销全部会话，
-     * 旧一次性密码立即失效；响应丢失后用新 key 再次重置即可。
+     * IDEMPOTENCY_KEY_REUSED。首次重置生成一次性密码，
+     * auth_version bump + 撤销全部会话，旧一次性密码立即失效。
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OneTimePasswordResponse resetPassword(CurrentUserPrincipal admin, Long userId,
@@ -279,12 +374,12 @@ public class UserService {
 
         String oneTimePassword = generateOneTimePassword();
         String passwordHash = passwordPolicy.hash(oneTimePassword);
-        appUserMapper.updatePassword(userId, passwordHash, true, now);
+        appUserMapper.updatePassword(userId, passwordHash, false, now);
         authSessionMapper.revokeAllForUser(userId, now);
         idempotencyService.recordSuccess(admin.userId(), CMD_RESET_PASSWORD, idempotencyKey,
                 requestHash, "USER", String.valueOf(userId));
         auditService.record(admin, "USER_RESET_PASSWORD", "USER", String.valueOf(userId),
-                "{\"mustChangePassword\":true,\"reason\":\"" + jsonEscape(request.reason()) + "\"}");
+                "{\"mustChangePassword\":false,\"reason\":\"" + jsonEscape(request.reason()) + "\"}");
         return new OneTimePasswordResponse(String.valueOf(userId), oneTimePassword, false);
     }
 
@@ -319,6 +414,7 @@ public class UserService {
             throw BusinessException.internal("信用账户缺失，用户 id=" + userId);
         }
         int before = account.getScore();
+        String reason = normalizeReason(request.reason());
         CreditResult result = creditService.apply(new CreditCommand(
                 "manual:" + UUID.randomUUID(),
                 userId,
@@ -327,7 +423,7 @@ public class UserService {
                 null,
                 null,
                 null,
-                request.reason(),
+                reason,
                 admin.userId()));
 
         idempotencyService.recordSuccess(admin.userId(), CMD_CREDIT_ADJUST, idempotencyKey,
@@ -336,7 +432,7 @@ public class UserService {
                 "{\"targetScore\":" + request.targetScore() + ",\"requestedDelta\":"
                         + (request.targetScore() - before) + ",\"balanceBefore\":" + result.balanceBefore()
                         + ",\"balanceAfter\":" + result.balanceAfter() + ",\"logId\":"
-                        + result.logId() + ",\"reason\":\"" + jsonEscape(request.reason()) + "\"}");
+                        + result.logId() + ",\"reason\":\"" + jsonEscape(reason) + "\"}");
         return new CreditAdjustResponse(result.balanceBefore(), result.balanceAfter(),
                 String.valueOf(result.logId()));
     }
@@ -429,12 +525,12 @@ public class UserService {
                 user.getStatus(),
                 Boolean.TRUE.equals(user.isBlocked()),
                 score,
-                Boolean.TRUE.equals(user.isMustChangePassword()),
+                user.getAuthVersion() == null ? 0 : user.getAuthVersion(),
                 clock.toOffset(user.getCreatedAt()));
     }
 
     /**
-     * 16 位随机一次性密码：至少各含一位大写字母、小写字母、数字，其余从全字符集
+     * 12 位随机一次性密码：至少各含一位大写字母、小写字母、数字，其余从全字符集
      * 抽取后 Fisher-Yates 洗牌；SecureRandom 保证不可预测。
      */
     private String generateOneTimePassword() {
@@ -453,6 +549,11 @@ public class UserService {
             chars[j] = tmp;
         }
         return new String(chars);
+    }
+
+    /** 操作原因统一归一化：null/空串均按空字符串入库（credit_log.reason NOT NULL）。 */
+    private static String normalizeReason(String reason) {
+        return reason == null ? "" : reason.trim();
     }
 
     /** 审计摘要 JSON 转义：引号/反斜杠/换行转义，其余控制字符替换为空格，保证 JSON 列合法。 */

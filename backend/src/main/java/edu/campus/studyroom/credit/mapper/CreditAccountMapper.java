@@ -23,4 +23,7 @@ public interface CreditAccountMapper {
                     @Param("expectedVersion") Long expectedVersion,
                     @Param("newScore") int newScore,
                     @Param("now") java.time.LocalDateTime now);
+
+    /** 物理删除信用账户（学生账号删除时使用，调用方保证无信用流水）。 */
+    int deleteByUserId(@Param("userId") Long userId);
 }

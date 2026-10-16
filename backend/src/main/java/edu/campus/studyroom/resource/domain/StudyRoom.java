@@ -12,7 +12,6 @@ public class StudyRoom {
     private String name;
     private String campus;
     private String building;
-    private Integer floorNo;
     private LocalTime openTime;
     private LocalTime closeTime;
     private Integer rowsCount;
@@ -61,14 +60,6 @@ public class StudyRoom {
 
     public void setBuilding(String building) {
         this.building = building;
-    }
-
-    public Integer getFloorNo() {
-        return floorNo;
-    }
-
-    public void setFloorNo(Integer floorNo) {
-        this.floorNo = floorNo;
     }
 
     public LocalTime getOpenTime() {

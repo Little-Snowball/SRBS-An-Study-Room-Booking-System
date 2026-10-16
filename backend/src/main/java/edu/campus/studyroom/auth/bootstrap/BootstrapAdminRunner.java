@@ -21,7 +21,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
-import java.util.Locale;
 
 /**
  * One-shot administrator bootstrap CLI. Active only with the
@@ -98,13 +97,13 @@ public class BootstrapAdminRunner implements ApplicationRunner {
     private void createAdmin(String account, String password) {
         LocalDateTime now = clock.nowLocal();
         AppUser admin = new AppUser();
-        admin.setAccount(account.toUpperCase(Locale.ROOT));
+        admin.setAccount(account.trim());
         admin.setPasswordHash(passwordPolicy.hash(password));
         admin.setName(DEFAULT_ADMIN_NAME);
         admin.setRole(UserRole.ADMIN);
         admin.setStatus(UserStatus.ACTIVE);
         admin.setBlocked(false);
-        admin.setMustChangePassword(true);
+        admin.setMustChangePassword(false);
         admin.setAuthVersion(0);
         admin.setCreatedAt(now);
         admin.setUpdatedAt(now);

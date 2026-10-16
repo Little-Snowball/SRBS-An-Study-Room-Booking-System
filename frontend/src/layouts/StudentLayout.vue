@@ -21,6 +21,7 @@
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="me">个人信息</el-dropdown-item>
+            <el-dropdown-item command="change-password">修改密码</el-dropdown-item>
             <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -34,12 +35,14 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { fetchMyNotifications } from '@/api/me'
 
 const auth = useAuthStore()
+const router = useRouter()
 const unread = ref(0)
 let timer: number | undefined
 
@@ -58,6 +61,9 @@ function onCommand(command: string) {
   }
   if (command === 'me') {
     ElMessage.info(`${auth.user?.name} · ${auth.user?.college || '未填写学院'}`)
+  }
+  if (command === 'change-password') {
+    void router.push('/change-password')
   }
 }
 

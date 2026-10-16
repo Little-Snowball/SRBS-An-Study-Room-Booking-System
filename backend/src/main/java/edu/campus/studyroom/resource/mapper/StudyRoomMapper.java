@@ -31,12 +31,12 @@ public interface StudyRoomMapper {
 
     int insert(StudyRoom room);
 
-    /** Optimistic update of editable basics (name/campus/building/floor/hours/rows/cols). */
+    /** Optimistic update of editable basics (code/name/campus/building/hours/rows/cols). */
     int updateBasics(@Param("id") Long id,
+                     @Param("code") String code,
                      @Param("name") String name,
                      @Param("campus") String campus,
                      @Param("building") String building,
-                     @Param("floorNo") Integer floorNo,
                      @Param("openTime") java.time.LocalTime openTime,
                      @Param("closeTime") java.time.LocalTime closeTime,
                      @Param("rowsCount") Integer rowsCount,

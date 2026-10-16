@@ -1,21 +1,21 @@
 package edu.campus.studyroom.security;
 
-import edu.campus.studyroom.common.ErrorCode;
 import edu.campus.studyroom.common.BusinessException;
+import edu.campus.studyroom.common.ErrorCode;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Password policy: 12-64 chars, must not contain the account or the user's name,
- * no leading/trailing trimming of the raw secret. BCrypt cost=12.
+ * Password policy: 6-12 chars, not blank; no other content restrictions.
+ * BCrypt cost=12.
  */
 @Component
 public class PasswordPolicy {
 
     public static final int COST = 12;
-    public static final int MIN_LENGTH = 12;
-    public static final int MAX_LENGTH = 64;
+    public static final int MIN_LENGTH = 6;
+    public static final int MAX_LENGTH = 12;
 
     private final PasswordEncoder encoder = new BCryptPasswordEncoder(COST);
 
@@ -30,14 +30,6 @@ public class PasswordPolicy {
         }
         if (rawPassword.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "密码不能为空白字符");
-        }
-        String lower = rawPassword.toLowerCase();
-        if (account != null && !account.isBlank() && lower.contains(account.trim().toLowerCase())) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "密码不能包含学号/工号");
-        }
-        if (name != null && !name.isBlank() && name.trim().length() >= 2
-                && lower.contains(name.trim().toLowerCase())) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "密码不能包含姓名");
         }
     }
 

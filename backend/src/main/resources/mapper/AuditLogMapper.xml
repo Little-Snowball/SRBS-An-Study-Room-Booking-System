@@ -43,4 +43,7 @@
       <if test="dateTo != null">AND created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)</if>
     </where>
   </select>
+  <update id="clearActor">
+    UPDATE audit_log SET actor_id = NULL WHERE actor_id = #{actorId}
+  </update>
 </mapper>

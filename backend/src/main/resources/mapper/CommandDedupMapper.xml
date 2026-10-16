@@ -33,4 +33,7 @@
   <delete id="deleteById">
     DELETE FROM command_dedup WHERE id = #{id}
   </delete>
+  <delete id="deleteByUserId">
+    DELETE FROM command_dedup WHERE user_id = #{userId}
+  </delete>
 </mapper>

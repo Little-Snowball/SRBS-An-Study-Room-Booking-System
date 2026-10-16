@@ -25,4 +25,7 @@ public interface AuditLogMapper {
                    @Param("targetType") String targetType,
                    @Param("dateFrom") LocalDate dateFrom,
                    @Param("dateTo") LocalDate dateTo);
+
+    /** 操作人被删除时保留审计历史，仅将 actor_id 置空。 */
+    int clearActor(@Param("actorId") Long actorId);
 }

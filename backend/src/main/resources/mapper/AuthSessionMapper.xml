@@ -49,4 +49,7 @@
     WHERE expires_at &lt; #{before}
       AND (revoked_at IS NOT NULL OR expires_at &lt; #{before})
   </delete>
+  <delete id="deleteByUserId">
+    DELETE FROM auth_session WHERE user_id = #{userId}
+  </delete>
 </mapper>

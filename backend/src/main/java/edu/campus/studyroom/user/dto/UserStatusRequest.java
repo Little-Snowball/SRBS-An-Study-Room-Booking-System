@@ -1,8 +1,8 @@
 package edu.campus.studyroom.user.dto;
 
 import edu.campus.studyroom.user.domain.UserStatus;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * Admin status change for a student account. expectedAuthVersion guards against
@@ -12,7 +12,7 @@ import jakarta.validation.constraints.NotNull;
  */
 public record UserStatusRequest(
         @NotNull(message = "status 不能为空") UserStatus status,
-        @NotBlank(message = "操作原因不能为空") String reason,
+        @Size(max = 500, message = "操作原因不能超过 500 字") String reason,
         int expectedAuthVersion,
         boolean confirmTerminate
 ) {

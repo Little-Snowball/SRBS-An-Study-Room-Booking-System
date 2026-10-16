@@ -95,8 +95,8 @@ public class DemoFixtureService {
 
     private static final String COMMAND_TYPE = "DEMO_FIXTURE";
     private static final String[] STUDENT_ACCOUNTS = {
-            "20230001", "20230002", "20230003", "20230004",
-            "20230005", "20230006", "20230007", "20230008"};
+            "20240001", "20240002", "20240003", "20240004",
+            "20240005", "20240006", "20240007", "20240008"};
     private static final String NOTICE_TITLE = "系统使用指南与演示数据说明";
     private static final String NOTICE_CONTENT = "欢迎使用高校自习室预约与考勤管理系统。本系统支持分时预约、现场码签到、"
             + "暂离管控与违约申诉。当前数据库包含演示参考数据与演示业务流水，仅供课程设计演示与测试使用；"
@@ -273,7 +273,7 @@ public class DemoFixtureService {
     /** 昨日 09:00—12:00 主动签退完成；3 小时在座奖励触发 0—100 封顶（requested=4, actual=0）。 */
     private void seedCompletedCheckout(Ctx c) {
         String key = c.demoKey(c.yesterday, "COMPLETED_CHECKOUT");
-        AppUser user = c.user("20230001");
+        AppUser user = c.user("20240001");
         Seat seat = c.seat(0);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -298,7 +298,7 @@ public class DemoFixtureService {
     /** 昨日 14:00—15:30 到期自动完成；在座不足奖励起点，奖励为 0。 */
     private void seedCompletedAutoEnd(Ctx c) {
         String key = c.demoKey(c.yesterday, "COMPLETED_AUTO_END");
-        AppUser user = c.user("20230002");
+        AppUser user = c.user("20240002");
         Seat seat = c.seat(1);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -319,7 +319,7 @@ public class DemoFixtureService {
     /** 昨日 19:00—21:00 用户在无损取消截止前取消。 */
     private void seedCancelled(Ctx c) {
         String key = c.demoKey(c.yesterday, "CANCELLED");
-        AppUser user = c.user("20230006");
+        AppUser user = c.user("20240006");
         Seat seat = c.seat(2);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -339,7 +339,7 @@ public class DemoFixtureService {
     /** 昨日 10:00—12:00 爽约：ACTIVE 违约 + 扣分流水 + 通知。 */
     private void seedNoShowActive(Ctx c) {
         String key = c.demoKey(c.yesterday, "NO_SHOW_ACTIVE");
-        AppUser user = c.user("20230003");
+        AppUser user = c.user("20240003");
         Seat seat = c.seat(3);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -367,7 +367,7 @@ public class DemoFixtureService {
     /** 昨日 13:00—16:00 暂离超时：扣分后处罚被撤销（退还流水），演示 REVOKED 全链路。 */
     private void seedLeaveTimeoutRevoked(Ctx c) {
         String key = c.demoKey(c.yesterday, "LEAVE_TIMEOUT_REVOKED");
-        AppUser user = c.user("20230004");
+        AppUser user = c.user("20240004");
         Seat seat = c.seat(4);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -413,7 +413,7 @@ public class DemoFixtureService {
     /** 昨日 20:00—22:00 爽约：ACTIVE 违约 + 待审申诉（绑定凭证元数据）。 */
     private void seedNoShowWithAppeal(Ctx c) {
         String key = c.demoKey(c.yesterday, "NO_SHOW_APPEAL");
-        AppUser user = c.user("20230007");
+        AppUser user = c.user("20240007");
         Seat seat = c.seat(5);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -469,7 +469,7 @@ public class DemoFixtureService {
     /** 当天未来时段的一个 RESERVED 样本（运行时刻须在营业时间内）。 */
     private void seedReservedToday(Ctx c) {
         String key = c.demoKey(c.today, "RESERVED_TODAY");
-        AppUser user = c.user("20230001");
+        AppUser user = c.user("20240001");
         Seat seat = c.seat(0);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -490,7 +490,7 @@ public class DemoFixtureService {
     /** 当天进行中的 IN_USE 样本（已签到，跨当前时刻）。 */
     private void seedInUseToday(Ctx c) {
         String key = c.demoKey(c.today, "IN_USE_TODAY");
-        AppUser user = c.user("20230002");
+        AppUser user = c.user("20240002");
         Seat seat = c.seat(1);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -512,7 +512,7 @@ public class DemoFixtureService {
     /** 当天进行中的 LEFT_TEMP 样本（已暂离，未到暂离截止）。 */
     private void seedLeftTempToday(Ctx c) {
         String key = c.demoKey(c.today, "LEFT_TEMP_TODAY");
-        AppUser user = c.user("20230006");
+        AppUser user = c.user("20240006");
         Seat seat = c.seat(4);
         if (skipIfDone(c, user.getId(), key)) {
             return;
@@ -556,7 +556,7 @@ public class DemoFixtureService {
         notice.setCreatedAt(c.now);
         notice.setUpdatedAt(c.now);
         noticeMapper.insert(notice);
-        notificationService.publish(c.user("20230001").getId(), key + ":NOTICE", "NOTICE",
+        notificationService.publish(c.user("20240001").getId(), key + ":NOTICE", "NOTICE",
                 NOTICE_TITLE, "管理员发布了新公告：" + NOTICE_TITLE, null, null, c.now);
         recordDedup(c, c.admin.getId(), key, "NOTICE", String.valueOf(notice.getId()));
         c.counters.created++;

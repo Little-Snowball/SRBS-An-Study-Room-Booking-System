@@ -30,4 +30,7 @@ public interface NotificationMapper {
     int markRead(@Param("id") Long id,
                  @Param("userId") Long userId,
                  @Param("readAt") LocalDateTime readAt);
+
+    /** 物理删除该用户的全部通知（学生账号删除时使用）。 */
+    int deleteByUserId(@Param("userId") Long userId);
 }

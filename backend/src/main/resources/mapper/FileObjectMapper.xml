@@ -52,4 +52,7 @@
   <delete id="deleteById">
     DELETE FROM file_object WHERE id = #{id}
   </delete>
+  <delete id="deleteByOwner">
+    DELETE FROM file_object WHERE owner_id = #{ownerId}
+  </delete>
 </mapper>

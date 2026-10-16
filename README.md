@@ -5,30 +5,30 @@
 基于《自习室预约系统_完整开发实施手册 V1.0》《需求规格说明书 SRS V1.1》《项目开发计划 V1.0》实现的全栈系统：
 **分时预约 → 现场码签到 → 暂离管控 → 违约扣分与自动释放** 的闭环管理。
 
-## 当前验证状态（2026-10-15 实测）
+## 当前验证状态（2026-10-16 实测）
 
 | 项目 | 命令 | 结果 |
 |:---|:---|:---|
-| 后端编译 | `mvn compile` | ✅ 通过（218 个 Java 文件，0 错误） |
+| 后端编译 | `mvn compile` | ✅ 通过（219 个 Java 文件，0 错误） |
 | 后端单测 | `mvn test` | ✅ 43/43 通过（8 个测试类：时钟、区间重叠、格点、期限推导、状态机、奖励公式、密码策略、有效在座时长） |
-| 后端打包 | `mvn package -DskipTests` | ✅ `target/studyroom-1.0.0.jar`（约 40 MB，含嵌套依赖） |
-| Spring 容器启动 | `java -jar ... --server.port=18081` | ✅ 启动成功（8.8 秒），全部 Bean 装配通过、21 个 Mapper XML 与接口一一对应 |
+| 后端打包 | `mvn package` | ✅ `target/studyroom-1.0.0.jar`（约 40 MB，含嵌套依赖，打包时同步执行单测） |
+| Spring 容器启动 | `java -jar ... --server.port=18081` | ✅ 启动成功，全部 Bean 装配通过、21 个 Mapper XML 与接口一一对应 |
 | 安全信封 | `curl /api/v1/me` | ✅ 401 `{"code":"AUTH_REQUIRED","message":"请先登录",...}`；`X-Trace-Id` 响应头存在 |
 | 前端类型检查 | `npm run typecheck` | ✅ 0 错误（vue-tsc） |
-| 前端单测 | `npm run test` | ✅ 39/39 通过（格式转换、服务端时间偏移、auth store、rule store） |
-| 前端生产构建 | `npm run build` | ✅ 通过（19 个页面路由全部产出 chunk） |
-| 集成测试（真实 MySQL） | `mvn verify -Pintegration` | ⏸ 未执行：需 `TEST_DB_PASSWORD`（见下） |
+| 前端单测 | `npm run test` | ✅ 38/38 通过（4 个测试文件：格式转换、规则 store、auth store、服务端时间偏移） |
+| 前端生产构建 | `npm run build` | ✅ 通过（全部页面路由产出 chunk） |
+| 集成测试（真实 MySQL） | `mvn verify -Pintegration` | ✅ 49/49 通过（2026-10-15，含 `SchemaInvariantIT` 6 项数据库不变量） |
 
-**尚未执行的一步**：数据库迁移、首位管理员初始化、参考数据与演示夹具导入，以及 `SchemaInvariantIT` 的
-数据库不变量校验。这些都需要真实的 MySQL 账号密码（`DB_PASSWORD` / `TEST_DB_PASSWORD`），
-密码必须由操作者注入环境变量，不写入任何文件。补齐密码后按「快速开始」第 1—3 步即可跑通端到端。
+**端到端状态**：数据库迁移、首位管理员初始化、参考数据与演示夹具导入、集成测试均已于 2026-10-15
+在真实 MySQL 上打通；从零重建的完整操作序列见 `docs/数据库启用步骤.md`。
+数据库密码（`DB_PASSWORD` / `TEST_DB_PASSWORD`）由操作者注入环境变量，不写入任何文件。
 
 ## 功能总览
 
 | 端 | 功能 |
 |:---|:---|
-| 学生端 | 学号登录、个人概览（信用/公告/未读通知）、按日期时段与标签筛选自习室、可视化选座、预约/取消、六位现场码签到、暂离/回座、主动签退、历史订单、信用流水、违约申诉（含凭证上传）、站内通知 |
-| 管理员端 | 自习室与座位维护（批量生成/停用/闭馆影响策略）、规则版本发布、申诉审核与信用人工调整、学生账号管理（创建/禁用/黑名单/重置密码）、运营统计看板、公告管理、审计日志 |
+| 学生端 | 学号登录、个人概览（信用/公告/未读通知）、按日期时段与标签筛选自习室、可视化选座、预约/取消、六位现场码签到、暂离/回座、主动签退、历史订单、信用流水、违约申诉（含凭证上传）、站内通知、修改密码 |
+| 管理员端 | 自习室与座位维护（编号可修改、批量生成/停用/闭馆影响策略）、规则版本发布、申诉审核与信用人工调整、学生账号管理（创建/编辑信息/删除无历史账号/禁用/黑名单/重置密码/信用调整）、运营统计看板、公告管理、审计日志、修改密码 |
 | 后台 | 每 60 秒超时结算（爽约/暂离超时/到期自动完成）、信用幂等入账、站内通知、启动补扫、维护清理 |
 
 ## 技术栈（版本冻结，可复现）
@@ -57,7 +57,7 @@
 │       └── resources/
 │           ├── application.yml / application-local.yml / application-test.yml
 │           ├── mapper/*.xml     # MyBatis SQL
-│           └── db/migration/    # V001 表结构 / V002 默认规则与 guard
+│           └── db/migration/    # V001 表结构 / V002 默认规则与 guard / V003 删除房间楼层列
 ├── frontend/                    # Vue 3 前端（src/{api,types,router,stores,layouts,views,components,composables,utils,styles}）
 ├── docs/                        # openapi.json、内部契约、测试场景、决策记录
 ├── scripts/                     # 实体生成等辅助脚本
@@ -88,7 +88,7 @@ CREATE DATABASE studyroom_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- 迁移账号：对本项目库 DDL/DML；运行账号：仅 SELECT/INSERT/UPDATE/DELETE（无 CREATE/DROP/GRANT/FILE）
 ```
 
-表结构由 Flyway 在首次启动时自动迁移（`V001__schema.sql` + `V002__rule_seed.sql`），**禁止** `DROP DATABASE` 与 `clean`。
+表结构由 Flyway 在首次启动时自动迁移（`V001__schema.sql` → `V002__rule_seed.sql` → `V003__drop_study_room_floor.sql`），**禁止** `DROP DATABASE` 与 `clean`。
 
 ### 2. 后端
 
@@ -110,26 +110,29 @@ cd backend
 
 - 健康检查：<http://127.0.0.1:8080/actuator/health>（仅 UP/DOWN）
 - OpenAPI（local profile 开放）：<http://127.0.0.1:8080/v3/api-docs> · <http://127.0.0.1:8080/swagger-ui>
+- 端口提示：若 shell 环境存在 `SERVER__PORT` 等 Spring 风格环境变量会覆盖 `server.port`（表现为随机端口被占用），显式追加 `--server.port=8080` 即可。
 
 ### 3. 初始化首位管理员与演示数据（CLI，显式执行）
 
 ```powershell
-# 1) 首位管理员（仅在空库执行一次；BOOTSTRAP_ACCOUNT/BOOTSTRAP_PASSWORD 来自环境）
+# 1) 首位管理员（仅在空库执行一次；课程演示用 admin / admin123，正式环境必须改密码）
+$env:BOOTSTRAP_ACCOUNT = "admin"
+$env:BOOTSTRAP_PASSWORD = "admin123"
 &"D:\JDK_21\bin\java.exe" -jar target\studyroom-1.0.0.jar --bootstrap-admin
 
 # 2) 参考数据 + 演示夹具（local profile；会创建校区/楼宇/房间/座位/虚构学生与历史样本）
 &"D:\JDK_21\bin\java.exe" -jar target\studyroom-1.0.0.jar --seed-reference-data --allow-demo-fixtures
 ```
 
-初始密码一次性输出、不落日志；首次登录强制改密。
+初始密码一次性输出、不落日志。演示学生 `20240001`—`20240008`，统一口令 `stu123`；两端右上角用户菜单均提供「修改密码」入口。
 
 ### 4. 前端
 
 ```powershell
 cd frontend
-&"C:\Users\Little_Snowball\.workbuddy\binaries\node\versions\22.22.2-6\node.exe" "C:\Users\Little_Snowball\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\npm\bin\npm-cli.js" ci
-&"C:\Users\Little_Snowball\.workbuddy\binaries\node\versions\22.22.2-6\node.exe" "C:\Users\Little_Snowball\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\npm\bin\npm-cli.js" run build
-&"C:\Users\Little_Snowball\.workbuddy\binaries\node\versions\22.22.2-6\node.exe" "C:\Users\Little_Snowball\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\npm\bin\npm-cli.js" run dev
+npm ci
+npm run build
+npm run dev
 ```
 
 访问 <http://127.0.0.1:5173>（Vite 已将 `/api`、`/v3/api-docs` 代理到 8080）。

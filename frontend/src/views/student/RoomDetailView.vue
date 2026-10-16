@@ -16,7 +16,7 @@
           </el-tag>
         </div>
         <div class="text-sub">
-          {{ room.campus }} · {{ room.building }} · {{ room.floorNo }} 楼 · 营业 {{ room.openTime }}—{{ room.closeTime }}
+          {{ room.campus }} · {{ room.building }} · 开放 {{ room.openTime }}—{{ room.closeTime }}
         </div>
         <div class="period-line">
           <span>所选时段：{{ formatDateTime(startAt) }} — {{ formatDateTime(endAt) }}</span>

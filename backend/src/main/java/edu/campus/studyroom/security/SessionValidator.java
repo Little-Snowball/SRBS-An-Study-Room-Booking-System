@@ -49,7 +49,6 @@ public class SessionValidator {
             return null;
         }
         return new CurrentUserPrincipal(user.getId(), user.getAccount(), user.getName(), user.getRole(),
-                user.getStatus(), Boolean.TRUE.equals(user.isBlocked()),
-                Boolean.TRUE.equals(user.isMustChangePassword()));
+                user.getStatus(), Boolean.TRUE.equals(user.isBlocked()));
     }
 }

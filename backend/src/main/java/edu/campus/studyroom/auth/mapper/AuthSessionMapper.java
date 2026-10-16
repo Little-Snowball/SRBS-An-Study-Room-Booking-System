@@ -25,4 +25,7 @@ public interface AuthSessionMapper {
                                          @Param("limit") int limit);
 
     int deleteExpiredBefore(@Param("before") LocalDateTime before);
+
+    /** 物理删除该用户的全部会话（学生账号删除时使用）。 */
+    int deleteByUserId(@Param("userId") Long userId);
 }

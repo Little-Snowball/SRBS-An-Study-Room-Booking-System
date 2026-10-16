@@ -53,10 +53,10 @@ coverage/
 # ---- Agent 本地记忆目录 ----
 .workbuddy/
 
-# ---- 中间提取文件 ----
+# ---- 中间提取文件（不入库）----
 manual_extract.txt
 manual_tables.txt
 
-# ---- 手工提取的中间文件（不入库）----
-manual_extract.txt
-manual_tables.txt
+# ---- 临时诊断脚本（用完即删，双保险）----
+tmp-*.mjs
+tmp-*.sh

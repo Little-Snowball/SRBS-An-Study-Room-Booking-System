@@ -53,7 +53,6 @@ export interface LoginResponse {
   accessToken: string
   expiresAt: string
   user: UserProfile
-  mustChangePassword: boolean
 }
 
 export interface RoomListItem {
@@ -62,7 +61,6 @@ export interface RoomListItem {
   name: string
   campus: string
   building: string
-  floorNo: number
   openTime: string
   closeTime: string
   rows: number
@@ -77,7 +75,6 @@ export interface RoomDetail {
   name: string
   campus: string
   building: string
-  floorNo: number
   openTime: string
   closeTime: string
   rows: number
@@ -239,7 +236,8 @@ export interface AdminUserItem {
   status: UserStatus
   blocked: boolean
   creditScore: number
-  mustChangePassword: boolean
+  /** 乐观锁版本：禁用/改密后会 +1，状态类操作需回传当前值 */
+  authVersion: number
   createdAt: string
 }
 

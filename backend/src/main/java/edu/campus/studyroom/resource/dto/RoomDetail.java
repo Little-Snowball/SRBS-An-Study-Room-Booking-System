@@ -13,7 +13,6 @@ public record RoomDetail(
         String name,
         String campus,
         String building,
-        int floorNo,
         @JsonFormat(pattern = "HH:mm") LocalTime openTime,
         @JsonFormat(pattern = "HH:mm") LocalTime closeTime,
         int rows,

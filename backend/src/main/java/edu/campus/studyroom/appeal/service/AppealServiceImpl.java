@@ -152,14 +152,13 @@ public class AppealServiceImpl implements AppealService {
         LocalDateTime now = clock.nowLocal();
 
         String normalizedDecision = decision == null ? "" : decision.trim().toUpperCase(Locale.ROOT);
-        boolean approve = "APPROVE".equals(normalizedDecision);
-        if (!approve && !"REJECT".equals(normalizedDecision)) {
-            throw BusinessException.validation("decision 必须为 APPROVE 或 REJECT");
+        // 前端状态机使用 APPROVED/REJECTED，历史接口使用 APPROVE/REJECT，两者均接受
+        boolean approve = "APPROVE".equals(normalizedDecision) || "APPROVED".equals(normalizedDecision);
+        boolean reject = "REJECT".equals(normalizedDecision) || "REJECTED".equals(normalizedDecision);
+        if (!approve && !reject) {
+            throw BusinessException.validation("decision 必须为 APPROVE(APPROVED) 或 REJECT(REJECTED)");
         }
         String normalizedComment = comment == null ? "" : comment.trim();
-        if (!approve && normalizedComment.isEmpty()) {
-            throw BusinessException.validation("驳回申诉必须填写审核意见");
-        }
         if (normalizedComment.length() > 1000) {
             throw BusinessException.validation("审核意见不能超过 1000 字");
         }

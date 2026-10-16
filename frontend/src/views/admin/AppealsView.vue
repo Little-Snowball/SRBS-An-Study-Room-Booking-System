@@ -145,14 +145,14 @@
               <el-radio value="REJECTED">驳回</el-radio>
             </el-radio-group>
           </el-form-item>
-          <el-form-item label="审核意见" required>
+          <el-form-item label="审核意见">
             <el-input
               v-model="reviewComment"
               type="textarea"
               :rows="3"
               maxlength="1000"
               show-word-limit
-              :placeholder="reviewDecision === 'REJECTED' ? '驳回理由必填（5—1000 字）' : '选填，将展示给学生'"
+              :placeholder="reviewDecision === 'REJECTED' ? '驳回理由（选填），将展示给学生' : '选填，将展示给学生'"
             />
           </el-form-item>
         </el-form>
@@ -311,10 +311,6 @@ function closeReview(): void {
 async function submitReview(): Promise<void> {
   if (!reviewRow.value) return
   const comment = reviewComment.value.trim()
-  if (reviewDecision.value === 'REJECTED' && (comment.length < 5 || comment.length > 1000)) {
-    reviewError.value = '驳回理由必填，且需 5—1000 字'
-    return
-  }
   if (comment.length > 1000) {
     reviewError.value = '审核意见不能超过 1000 字'
     return

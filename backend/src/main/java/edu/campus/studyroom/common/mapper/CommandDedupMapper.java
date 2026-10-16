@@ -20,4 +20,7 @@ public interface CommandDedupMapper {
     List<CommandDedup> selectOlderThan(@Param("before") LocalDateTime before);
 
     int deleteById(@Param("id") Long id);
+
+    /** 物理删除该用户的幂等记录（学生账号删除时使用）。 */
+    int deleteByUserId(@Param("userId") Long userId);
 }

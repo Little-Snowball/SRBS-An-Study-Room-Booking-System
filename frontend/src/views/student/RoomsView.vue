@@ -70,7 +70,7 @@
           </el-tag>
         </div>
         <div class="text-sub">
-          {{ room.campus }} · {{ room.building }} · {{ room.floorNo }} 楼 · 营业 {{ room.openTime }}—{{ room.closeTime }}
+          {{ room.campus }} · {{ room.building }} · 开放 {{ room.openTime }}—{{ room.closeTime }}
         </div>
         <div class="room-seats">
           <span v-if="room.matchingSeatCount > 0" class="seat-ok">该时段可约座位 {{ room.matchingSeatCount }} 个</span>

@@ -9,7 +9,6 @@ import type { UserProfile } from '@/types'
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(null)
   const user = ref<UserProfile | null>(null)
-  const mustChangePassword = ref(false)
 
   bindTokenGetter(() => token.value)
 
@@ -21,7 +20,6 @@ export const useAuthStore = defineStore('auth', () => {
     const resp = await authApi.login({ account: account.trim(), password })
     token.value = resp.accessToken
     user.value = resp.user
-    mustChangePassword.value = resp.mustChangePassword
   }
 
   async function refreshMe(): Promise<void> {
@@ -41,7 +39,6 @@ export const useAuthStore = defineStore('auth', () => {
   function clearSession(): void {
     token.value = null
     user.value = null
-    mustChangePassword.value = false
   }
 
   async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
@@ -52,7 +49,6 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     token,
     user,
-    mustChangePassword,
     isLoggedIn,
     isAdmin,
     isStudent,

@@ -22,12 +22,12 @@
             v-model="form.newPassword"
             type="password"
             maxlength="64"
-            placeholder="请输入新密码（12—64 位）"
+            placeholder="请输入新密码（6—12 位）"
             autocomplete="new-password"
             show-password
             :disabled="submitting"
           />
-          <p class="field-hint">新密码需为 12—64 位，且不能包含学号或姓名。</p>
+          <p class="field-hint">新密码需为 6—12 位。</p>
         </el-form-item>
         <el-form-item label="确认新密码" prop="confirmPassword">
           <el-input
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -69,20 +69,10 @@ const formRef = ref<FormInstance>()
 const submitting = ref(false)
 const form = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
-const forbiddenWords = computed(() => {
-  const words: string[] = []
-  if (auth.user?.account) words.push(auth.user.account)
-  if (auth.user?.name) words.push(auth.user.name)
-  return words
-})
-
-/* 密码内容不打印、不进入错误提示，仅做长度与包含性提示；最终规则以后端为准 */
+/* 密码内容不打印、不进入错误提示，仅做长度提示；最终规则以后端为准 */
 function validateNewPassword(value: string): string | null {
   if (!value) return '请输入新密码'
-  if (value.length < 12 || value.length > 64) return '新密码长度需为 12—64 位'
-  for (const word of forbiddenWords.value) {
-    if (word && value.includes(word)) return '新密码不能包含学号或姓名'
-  }
+  if (value.length < 6 || value.length > 12) return '新密码长度需为 6—12 位'
   return null
 }
 

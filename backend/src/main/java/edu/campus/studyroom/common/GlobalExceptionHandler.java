@@ -13,6 +13,8 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -61,6 +63,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorEnvelope> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ErrorEnvelope.of(ErrorCode.FORBIDDEN, "无权限执行该操作"));
+    }
+
+    /** 未匹配的路径（如不存在的接口地址）返回 404，而不是兜底 500。 */
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ErrorEnvelope> handleNoResource(Exception ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorEnvelope.of(ErrorCode.NOT_FOUND, "资源不存在或无权查看"));
+    }
+
+    /** 路径存在但 HTTP 方法不匹配（如对仅有 PATCH 的地址发 GET）返回 405。 */
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorEnvelope> handleMethodNotSupported(
+            org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ErrorEnvelope.of(ErrorCode.METHOD_NOT_ALLOWED,
+                        "请求方法不被允许：" + ex.getMethod()));
     }
 
     @ExceptionHandler(Exception.class)

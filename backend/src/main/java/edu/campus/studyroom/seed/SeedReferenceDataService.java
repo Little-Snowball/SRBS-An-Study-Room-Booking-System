@@ -59,8 +59,8 @@ public class SeedReferenceDataService {
 
     /** 演示现场码（仅参考数据用途，哈希后入库，不明文落库）。 */
     private static final String DEMO_CHECKIN_CODE = "123456";
-    /** 虚构学生的固定演示初始密码（参考数据用途，首次登录后应自行修改）。 */
-    private static final String STUDENT_DEMO_PASSWORD = "Study@2024demo";
+    /** 虚构学生的固定演示初始密码（参考数据用途）。 */
+    private static final String STUDENT_DEMO_PASSWORD = "stu123";
     private static final String ADMIN_ACCOUNT = "ADMIN";
     private static final String ADMIN_NAME = "系统管理员";
     private static final String ADMIN_COLLEGE = "信息中心";
@@ -71,26 +71,26 @@ public class SeedReferenceDataService {
     private static final Set<String> MAINTENANCE_CELLS = Set.of("1-1", "4-1");
 
     private record RoomSpec(String code, String name, String campus, String building,
-                            int floorNo, String seatPrefix, RoomStatus status) {
+                            String seatPrefix, RoomStatus status) {
     }
 
     private record StudentSpec(String account, String name, String college, int score, UserStatus status) {
     }
 
     private static final List<RoomSpec> ROOM_SPECS = List.of(
-            new RoomSpec("SR-A101", "中心图书馆101自习室", "中心校区", "图书馆", 1, "A", RoomStatus.OPEN),
-            new RoomSpec("SR-B202", "中心图书馆202自习室", "中心校区", "图书馆", 2, "B", RoomStatus.OPEN),
-            new RoomSpec("SR-C303", "信息楼303研讨自习室", "东校区", "信息楼", 3, "C", RoomStatus.CLOSED));
+            new RoomSpec("SR-A101", "中心图书馆101自习室", "中心校区", "图书馆", "A", RoomStatus.OPEN),
+            new RoomSpec("SR-B202", "中心图书馆202自习室", "中心校区", "图书馆", "B", RoomStatus.OPEN),
+            new RoomSpec("SR-C303", "信息楼303研讨自习室", "东校区", "信息楼", "C", RoomStatus.CLOSED));
 
     private static final List<StudentSpec> STUDENT_SPECS = List.of(
-            new StudentSpec("20230001", "林晓", "计算机学院", 100, UserStatus.ACTIVE),
-            new StudentSpec("20230002", "陈思远", "计算机学院", 100, UserStatus.ACTIVE),
-            new StudentSpec("20230003", "王一鸣", "外国语学院", 60, UserStatus.ACTIVE),
-            new StudentSpec("20230004", "李梓涵", "经济管理学院", 59, UserStatus.ACTIVE),
-            new StudentSpec("20230005", "赵子龙", "理学院", 5, UserStatus.ACTIVE),
-            new StudentSpec("20230006", "刘诗涵", "人文学院", 100, UserStatus.ACTIVE),
-            new StudentSpec("20230007", "孙嘉怡", "机械工程学院", 100, UserStatus.ACTIVE),
-            new StudentSpec("20230008", "周文昊", "马克思主义学院", 100, UserStatus.DISABLED));
+            new StudentSpec("20240001", "林晓", "计算机学院", 100, UserStatus.ACTIVE),
+            new StudentSpec("20240002", "陈思远", "计算机学院", 100, UserStatus.ACTIVE),
+            new StudentSpec("20240003", "王一鸣", "外国语学院", 60, UserStatus.ACTIVE),
+            new StudentSpec("20240004", "李梓涵", "经济管理学院", 59, UserStatus.ACTIVE),
+            new StudentSpec("20240005", "赵子龙", "理学院", 5, UserStatus.ACTIVE),
+            new StudentSpec("20240006", "刘诗涵", "人文学院", 100, UserStatus.ACTIVE),
+            new StudentSpec("20240007", "孙嘉怡", "机械工程学院", 100, UserStatus.ACTIVE),
+            new StudentSpec("20240008", "周文昊", "马克思主义学院", 100, UserStatus.DISABLED));
 
     private final BusinessGuardLock businessGuardLock;
     private final StudyRoomMapper studyRoomMapper;
@@ -158,7 +158,6 @@ public class SeedReferenceDataService {
                 room.setName(spec.name());
                 room.setCampus(spec.campus());
                 room.setBuilding(spec.building());
-                room.setFloorNo(spec.floorNo());
                 room.setOpenTime(OPEN_TIME);
                 room.setCloseTime(CLOSE_TIME);
                 room.setRowsCount(ROWS);
@@ -284,7 +283,7 @@ public class SeedReferenceDataService {
                 admin.setRole(UserRole.ADMIN);
                 admin.setStatus(UserStatus.ACTIVE);
                 admin.setBlocked(false);
-                admin.setMustChangePassword(true);
+                admin.setMustChangePassword(false);
                 admin.setAuthVersion(0);
                 admin.setCreatedAt(now);
                 admin.setUpdatedAt(now);
@@ -314,7 +313,6 @@ public class SeedReferenceDataService {
             snapshot.put("name", room.getName());
             snapshot.put("campus", room.getCampus());
             snapshot.put("building", room.getBuilding());
-            snapshot.put("floorNo", room.getFloorNo());
             snapshot.put("openTime", room.getOpenTime().toString());
             snapshot.put("closeTime", room.getCloseTime().toString());
             snapshot.put("rowsCount", room.getRowsCount());

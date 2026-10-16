@@ -148,7 +148,7 @@
             :rows="2"
             maxlength="500"
             show-word-limit
-            placeholder="请填写本次规则变更原因，将记入审计日志"
+            placeholder="本次规则变更原因（选填），将记入审计日志"
           />
         </el-form-item>
         <el-form-item>
@@ -456,7 +456,6 @@ const rules: FormRules<RuleFormState> = {
     { validator: intRange(0, 100, '奖励上限须为 0—100 的整数'), trigger: 'blur' }
   ],
   reason: [
-    { required: true, message: '请填写发布原因', trigger: 'blur' },
     { max: 500, message: '发布原因不能超过 500 字', trigger: 'blur' }
   ]
 }

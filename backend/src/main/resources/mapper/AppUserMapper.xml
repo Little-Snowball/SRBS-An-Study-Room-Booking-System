@@ -89,4 +89,18 @@
   <select id="countByRole" resultType="long">
     SELECT COUNT(*) FROM app_user WHERE role = #{role}
   </select>
+  <!-- 身份信息更新（学号/姓名/学院）；行锁与角色校验由调用方在事务内完成 -->
+  <update id="updateIdentity">
+    UPDATE app_user
+    SET account = #{account},
+        name = #{name},
+        college = #{college},
+        updated_at = #{now}
+    WHERE id = #{id}
+  </update>
+
+  <!-- 仅限无业务历史的学生账号删除（调用方已完成依赖清理） -->
+  <delete id="deleteById">
+    DELETE FROM app_user WHERE id = #{id}
+  </delete>
 </mapper>

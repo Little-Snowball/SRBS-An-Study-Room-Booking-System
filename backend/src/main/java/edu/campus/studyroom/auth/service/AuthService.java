@@ -73,8 +73,7 @@ public class AuthService {
         String token = jwtTokenService.issue(user.getId(), session.getAuthVersion(),
                 session.getId(), clock.now());
         UserProfile profile = buildProfile(user);
-        return new LoginResponse(token, clock.toOffset(session.getExpiresAt()), profile,
-                Boolean.TRUE.equals(user.isMustChangePassword()));
+        return new LoginResponse(token, clock.toOffset(session.getExpiresAt()), profile);
     }
 
     public void logout(String sid) {

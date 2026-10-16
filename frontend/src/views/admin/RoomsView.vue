@@ -24,8 +24,7 @@
         <el-table-column prop="name" label="名称" min-width="150" show-overflow-tooltip />
         <el-table-column prop="campus" label="校区" min-width="100" show-overflow-tooltip />
         <el-table-column prop="building" label="楼宇" min-width="100" show-overflow-tooltip />
-        <el-table-column prop="floorNo" label="楼层" width="80" align="center" />
-        <el-table-column label="营业时间" min-width="150" align="center">
+        <el-table-column label="开放时间" min-width="150" align="center">
           <template #default="{ row }">{{ row.openTime }} — {{ row.closeTime }}</template>
         </el-table-column>
         <el-table-column label="布局" width="100" align="center">
@@ -92,7 +91,7 @@
       />
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="96px">
         <el-form-item label="编号" prop="code">
-          <el-input v-model="form.code" :disabled="!!editingId" placeholder="房间唯一编号，如 LIB-301" maxlength="32" />
+          <el-input v-model="form.code" placeholder="房间唯一编号，如 LIB-301" maxlength="32" />
         </el-form-item>
         <el-form-item label="名称" prop="name">
           <el-input v-model="form.name" placeholder="房间名称" maxlength="100" show-word-limit />
@@ -103,10 +102,7 @@
         <el-form-item label="楼宇" prop="building">
           <el-input v-model="form.building" placeholder="如 图书馆" maxlength="64" />
         </el-form-item>
-        <el-form-item label="楼层" prop="floorNo">
-          <el-input-number v-model="form.floorNo" :min="-10" :max="99" :step="1" controls-position="right" />
-        </el-form-item>
-        <el-form-item label="营业时间" required>
+        <el-form-item label="开放时间" required>
           <div class="time-range">
             <el-form-item prop="openTime">
               <el-time-picker
@@ -143,14 +139,14 @@
           <div class="field-hint">仅允许设置，任何接口不回读现场码</div>
         </el-form-item>
 
-        <!-- 编辑时缩短营业时间必须给出订单处理策略 -->
+        <!-- 编辑时缩短开放时间必须给出订单处理策略 -->
         <template v-if="editingId && hoursChanged">
           <el-alert
             type="warning"
             :closable="false"
             show-icon
-            title="营业时间已修改"
-            description="缩短营业时间会影响不再完全处于新营业范围内的订单，必须选择处理策略并确认影响预览。"
+            title="开放时间已修改"
+            description="缩短开放时间会影响不再完全处于新开放范围内的订单，必须选择处理策略并确认影响预览。"
             class="mb-16"
           />
           <el-form-item label="订单策略" prop="orderPolicy">
@@ -222,14 +218,14 @@
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="操作原因" required>
+          <el-form-item label="操作原因">
             <el-input
               v-model="statusReason"
               type="textarea"
               :rows="2"
               maxlength="200"
               show-word-limit
-              placeholder="请填写闭馆原因，将记入审计日志"
+              placeholder="闭馆原因（选填），将记入审计日志"
             />
           </el-form-item>
           <el-form-item label="影响预览">
@@ -413,7 +409,6 @@ interface RoomFormState {
   name: string
   campus: string
   building: string
-  floorNo: number
   openTime: string
   closeTime: string
   rows: number
@@ -427,7 +422,6 @@ const defaultForm = (): RoomFormState => ({
   name: '',
   campus: '',
   building: '',
-  floorNo: 1,
   openTime: '07:00',
   closeTime: '22:30',
   rows: 4,
@@ -480,7 +474,7 @@ const formRules: FormRules<RoomFormState> = {
   orderPolicy: [
     {
       validator: (_rule, value, callback) => {
-        if (hoursChanged.value && !value) callback(new Error('修改营业时间必须选择订单处理策略'))
+        if (hoursChanged.value && !value) callback(new Error('修改开放时间必须选择订单处理策略'))
         else callback()
       },
       trigger: 'change'
@@ -522,7 +516,6 @@ function applyDetailToForm(detail: RoomDetail): void {
     name: detail.name,
     campus: detail.campus,
     building: detail.building,
-    floorNo: detail.floorNo,
     openTime: detail.openTime,
     closeTime: detail.closeTime,
     rows: detail.rows,
@@ -539,7 +532,6 @@ function applyListItemToForm(row: RoomListItem): void {
     name: row.name,
     campus: row.campus,
     building: row.building,
-    floorNo: row.floorNo,
     openTime: row.openTime,
     closeTime: row.closeTime,
     rows: row.rows,
@@ -576,7 +568,7 @@ async function submitForm(): Promise<void> {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
   if (form.value.openTime >= form.value.closeTime) {
-    formError.value = '营业开始时间必须早于结束时间'
+    formError.value = '开放开始时间必须早于结束时间'
     return
   }
   formError.value = ''
@@ -586,10 +578,10 @@ async function submitForm(): Promise<void> {
       formError.value = '无法获取房间最新版本，请关闭对话框后重试'
       return
     }
-    // 缩短营业时间：必须有策略 + 影响预览 + 二次确认
+    // 缩短开放时间：必须有策略 + 影响预览 + 二次确认
     if (hoursChanged.value) {
       if (!form.value.orderPolicy) {
-        formError.value = '修改营业时间必须选择订单处理策略'
+        formError.value = '修改开放时间必须选择订单处理策略'
         return
       }
       if (!editImpact.value) {
@@ -598,8 +590,8 @@ async function submitForm(): Promise<void> {
       }
       const impactText = editImpact.value.map((r) => `${r.label}：${r.value}`).join('；')
       const confirmed = await confirmAction(
-        '确认修改营业时间',
-        `新营业时间 ${form.value.openTime} — ${form.value.closeTime}，订单策略：${
+        '确认修改开放时间',
+        `新开放时间 ${form.value.openTime} — ${form.value.closeTime}，订单策略：${
           form.value.orderPolicy === 'FORCE_END' ? '强制终止' : '保留进行中'
         }。预估影响：${impactText}。执行时服务端将重新核算，确定提交吗？`
       )
@@ -608,6 +600,7 @@ async function submitForm(): Promise<void> {
     submitting.value = true
     try {
       const payload: Record<string, unknown> = {
+        code: form.value.code.trim(),
         name: form.value.name,
         campus: form.value.campus,
         building: form.value.building,
@@ -615,7 +608,7 @@ async function submitForm(): Promise<void> {
         closeTime: form.value.closeTime,
         rows: form.value.rows,
         cols: form.value.cols,
-        expectedVersion: currentVersion
+        expectedVersion: currentVersion.value
       }
       if (hoursChanged.value) payload.orderPolicy = form.value.orderPolicy
       await updateRoom(editingId.value, payload)
@@ -636,7 +629,6 @@ async function submitForm(): Promise<void> {
       name: form.value.name.trim(),
       campus: form.value.campus.trim(),
       building: form.value.building.trim(),
-      floorNo: form.value.floorNo,
       openTime: form.value.openTime,
       closeTime: form.value.closeTime,
       rows: form.value.rows,

@@ -26,8 +26,8 @@ const student: UserProfile = {
 
 const admin: UserProfile = { ...student, id: '2', account: 'admin', role: 'ADMIN' }
 
-function loginResp(user: UserProfile, mustChangePassword = false): LoginResponse {
-  return { accessToken: 'token-abc', expiresAt: '2026-10-14T12:00:00+08:00', user, mustChangePassword }
+function loginResp(user: UserProfile): LoginResponse {
+  return { accessToken: 'token-abc', expiresAt: '2026-10-14T12:00:00+08:00', user }
 }
 
 beforeEach(() => {
@@ -40,7 +40,6 @@ describe('auth store 初始状态', () => {
     const auth = useAuthStore()
     expect(auth.token).toBeNull()
     expect(auth.user).toBeNull()
-    expect(auth.mustChangePassword).toBe(false)
     expect(auth.isLoggedIn).toBe(false)
     expect(auth.isAdmin).toBe(false)
     expect(auth.isStudent).toBe(false)
@@ -60,7 +59,6 @@ describe('auth store login', () => {
     expect(auth.isLoggedIn).toBe(true)
     expect(auth.isStudent).toBe(true)
     expect(auth.isAdmin).toBe(false)
-    expect(auth.mustChangePassword).toBe(false)
   })
 
   it('登录失败时状态保持不变', async () => {
@@ -83,14 +81,6 @@ describe('auth store login', () => {
     expect(auth.isStudent).toBe(false)
   })
 
-  it('mustChangePassword 透传', async () => {
-    vi.mocked(authApi.login).mockResolvedValue(loginResp(student, true))
-    const auth = useAuthStore()
-
-    await auth.login('20230001', 'pwd')
-
-    expect(auth.mustChangePassword).toBe(true)
-  })
 })
 
 describe('auth store refreshMe', () => {
@@ -105,8 +95,8 @@ describe('auth store refreshMe', () => {
 })
 
 describe('auth store clearSession', () => {
-  it('清空 token、用户与改密标记', async () => {
-    vi.mocked(authApi.login).mockResolvedValue(loginResp(student, true))
+  it('清空 token 与用户', async () => {
+    vi.mocked(authApi.login).mockResolvedValue(loginResp(student))
     const auth = useAuthStore()
     await auth.login('20230001', 'pwd')
 
@@ -114,7 +104,6 @@ describe('auth store clearSession', () => {
 
     expect(auth.token).toBeNull()
     expect(auth.user).toBeNull()
-    expect(auth.mustChangePassword).toBe(false)
     expect(auth.isLoggedIn).toBe(false)
   })
 })

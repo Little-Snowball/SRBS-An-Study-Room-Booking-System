@@ -16,14 +16,17 @@ import edu.campus.studyroom.user.dto.CreditAdjustRequest;
 import edu.campus.studyroom.user.dto.CreditAdjustResponse;
 import edu.campus.studyroom.user.dto.OneTimePasswordResponse;
 import edu.campus.studyroom.user.dto.ResetPasswordRequest;
+import edu.campus.studyroom.user.dto.UpdateStudentRequest;
 import edu.campus.studyroom.user.dto.UserBlockRequest;
 import edu.campus.studyroom.user.dto.UserStatusRequest;
 import edu.campus.studyroom.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,7 +52,7 @@ public class AdminUserController {
         this.userService = userService;
     }
 
-    /** 账号分页：account 前缀模糊，role/status 可选过滤。 */
+    /** 账号分页：account 前缀模糊，role/status 可选过滤。本页是学生账号管理，默认只返回 STUDENT（管理员不出现）。 */
     @GetMapping
     public ApiResponse<PageResult<AdminUserItem>> page(
             @RequestParam(required = false) String account,
@@ -58,8 +61,9 @@ public class AdminUserController {
             @Valid @ModelAttribute PageQuery pageQuery,
             @CurrentUser CurrentUserPrincipal admin) {
         requireAdmin(admin);
+        UserRole requestedRole = parseRole(role);
         return ApiResponse.ok(userService.pageUsers(
-                account, parseRole(role), parseStatus(status), pageQuery));
+                account, requestedRole == null ? UserRole.STUDENT : requestedRole, parseStatus(status), pageQuery));
     }
 
     /** 创建学生账号：201，响应体含一次性密码（仅本次可见）。 */
@@ -70,6 +74,24 @@ public class AdminUserController {
         requireAdmin(admin);
         CreateStudentResponse created = userService.createStudent(admin, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(created));
+    }
+
+    /** 修改学生身份信息（学号/姓名/学院）。学号查重 409；学号变更会使该学生会话失效。 */
+    @PatchMapping("/{id}")
+    public ApiResponse<AdminUserItem> update(@PathVariable String id,
+                                             @Valid @RequestBody UpdateStudentRequest request,
+                                             @CurrentUser CurrentUserPrincipal admin) {
+        requireAdmin(admin);
+        return ApiResponse.ok(userService.updateStudent(admin, parseId(id, "用户 ID"), request));
+    }
+
+    /** 删除学生账号：仅无业务历史（预约/违约/流水/申诉）时可删，否则 409。 */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable String id,
+                                    @CurrentUser CurrentUserPrincipal admin) {
+        requireAdmin(admin);
+        userService.deleteStudent(admin, parseId(id, "用户 ID"));
+        return ApiResponse.ok(null);
     }
 
     /** 启用/禁用：禁用且有有效订单时需 confirmTerminate，否则 422 说明笔数。 */

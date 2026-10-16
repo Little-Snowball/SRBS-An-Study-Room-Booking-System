@@ -12,7 +12,7 @@ import java.util.UUID;
  * Role and status are read from the current user row, never from stale token claims.
  */
 public record CurrentUserPrincipal(Long userId, String account, String name, UserRole role,
-                                   UserStatus status, boolean blocked, boolean mustChangePassword) {
+                                   UserStatus status, boolean blocked) {
 
     public boolean isAdmin() {
         return role == UserRole.ADMIN;

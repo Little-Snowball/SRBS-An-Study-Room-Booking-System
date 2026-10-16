@@ -26,7 +26,6 @@ export interface RoomCreatePayload {
   name: string
   campus: string
   building: string
-  floorNo: number
   openTime: string
   closeTime: string
   rows: number
@@ -101,6 +100,16 @@ export async function createStudent(payload: { account: string; name: string; co
   oneTimePassword: string
 }> {
   return http.post('/admin/users', payload, withIdempotencyKey(config))
+}
+
+/** 修改学生身份信息（学号/姓名/学院）。学号变更会使该学生会话失效；学号冲突 409。 */
+export async function updateAdminUser(id: string, payload: { account: string; name: string; college?: string | null }, config?: AxiosRequestConfig): Promise<AdminUserItem> {
+  return http.patch(`/admin/users/${id}`, payload, withIdempotencyKey(config))
+}
+
+/** 删除学生账号：仅无业务历史（预约/违约/流水/申诉）时成功，否则 409 并给出计数。 */
+export async function deleteAdminUser(id: string, config?: AxiosRequestConfig): Promise<void> {
+  return http.delete(`/admin/users/${id}`, config)
 }
 
 export async function updateUserStatus(id: string, payload: Record<string, unknown>, config?: AxiosRequestConfig): Promise<AdminUserItem> {

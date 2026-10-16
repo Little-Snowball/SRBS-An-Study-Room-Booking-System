@@ -64,17 +64,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="首次改密" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.mustChangePassword" type="warning" size="small">待修改</el-tag>
-            <span v-else class="text-sub">已完成</span>
-          </template>
-        </el-table-column>
         <el-table-column label="创建时间" min-width="150">
           <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="330" fixed="right">
+        <el-table-column label="操作" width="420" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="openEditDialog(row)">编辑</el-button>
             <el-button
               v-if="row.status === 'ACTIVE'"
               link
@@ -105,6 +100,7 @@
             >解除黑名单</el-button>
             <el-button link type="warning" size="small" @click="openResetDialog(row)">重置密码</el-button>
             <el-button link type="primary" size="small" @click="openCreditDialog(row)">信用调整</el-button>
+            <el-button link type="danger" size="small" @click="confirmDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -146,6 +142,34 @@
       <template #footer>
         <el-button @click="createDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitting" @click="submitCreate">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑学生信息 -->
+    <el-dialog v-model="editDialogVisible" title="编辑学生信息" width="480px" @closed="resetEditDialog">
+      <el-alert
+        v-if="editError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="editError"
+        class="mb-16"
+      />
+      <p class="dialog-line">修改学号后该学生全部会话将立即失效，需重新登录。</p>
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="96px">
+        <el-form-item label="账号（学号）" prop="account">
+          <el-input v-model="editForm.account" placeholder="学生学号" maxlength="32" />
+        </el-form-item>
+        <el-form-item label="姓名" prop="name">
+          <el-input v-model="editForm.name" placeholder="学生姓名" maxlength="64" />
+        </el-form-item>
+        <el-form-item label="学院" prop="college">
+          <el-input v-model="editForm.college" placeholder="选填" maxlength="100" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitEdit">保存</el-button>
       </template>
     </el-dialog>
 
@@ -202,14 +226,14 @@
           class="mb-16"
         />
         <el-form label-width="96px">
-          <el-form-item label="操作原因" required>
+          <el-form-item label="操作原因">
             <el-input
               v-model="statusReason"
               type="textarea"
               :rows="2"
               maxlength="200"
               show-word-limit
-              placeholder="请填写禁用原因，将记入审计日志"
+              placeholder="禁用原因（选填），将记入审计日志"
             />
           </el-form-item>
           <el-form-item v-if="activeOrderCount > 0" label="无责终止" required>
@@ -224,14 +248,14 @@
           启用「{{ statusUser?.name }}（{{ statusUser?.account }}）」后恢复登录和新增业务写操作。解除人工限制不会绕过信用门槛，信用不足仍禁止新增预约。
         </p>
         <el-form label-width="96px">
-          <el-form-item label="操作原因" required>
+          <el-form-item label="操作原因">
             <el-input
               v-model="statusReason"
               type="textarea"
               :rows="2"
               maxlength="200"
               show-word-limit
-              placeholder="请填写启用原因，将记入审计日志"
+              placeholder="启用原因（选填），将记入审计日志"
             />
           </el-form-item>
         </el-form>
@@ -271,14 +295,14 @@
         </template>
       </p>
       <el-form label-width="96px">
-        <el-form-item label="操作原因" required>
+        <el-form-item label="操作原因">
           <el-input
             v-model="blockReason"
             type="textarea"
             :rows="2"
             maxlength="200"
             show-word-limit
-            placeholder="请填写原因，将记入审计日志"
+            placeholder="操作原因（选填），将记入审计日志"
           />
         </el-form-item>
       </el-form>
@@ -310,14 +334,14 @@
         class="mb-16"
       />
       <el-form label-width="96px">
-        <el-form-item label="操作原因" required>
+        <el-form-item label="操作原因">
           <el-input
             v-model="resetReason"
             type="textarea"
             :rows="2"
             maxlength="200"
             show-word-limit
-            placeholder="请填写重置原因，将记入审计日志"
+            placeholder="重置原因（选填），将记入审计日志"
           />
         </el-form-item>
       </el-form>
@@ -353,7 +377,7 @@
             :rows="3"
             maxlength="500"
             show-word-limit
-            placeholder="请填写 5—500 字的调整原因，将记入审计日志与信用流水"
+            placeholder="调整原因（选填），将记入审计日志与信用流水"
           />
         </el-form-item>
       </el-form>
@@ -372,6 +396,8 @@ import type { FormInstance, FormRules } from 'element-plus'
 import {
   fetchAdminUsers,
   createStudent,
+  updateAdminUser,
+  deleteAdminUser,
   updateUserStatus,
   updateUserBlock,
   resetUserPassword,
@@ -484,6 +510,85 @@ async function submitCreate(): Promise<void> {
   }
 }
 
+/* ---------- edit student identity ---------- */
+const editDialogVisible = ref(false)
+const editError = ref('')
+const editUserId = ref('')
+const editFormRef = ref<FormInstance>()
+const editForm = reactive({ account: '', name: '', college: '' })
+const editRules: FormRules<typeof editForm> = {
+  account: [
+    { required: true, message: '请输入学生学号', trigger: 'blur' },
+    { max: 32, message: '学号不能超过 32 字符', trigger: 'blur' }
+  ],
+  name: [
+    { required: true, message: '请输入学生姓名', trigger: 'blur' },
+    { max: 64, message: '姓名不能超过 64 字符', trigger: 'blur' }
+  ],
+  college: [{ max: 100, message: '学院不能超过 100 字符', trigger: 'blur' }]
+}
+
+function resetEditDialog(): void {
+  editFormRef.value?.clearValidate()
+  editError.value = ''
+  editUserId.value = ''
+  editForm.account = ''
+  editForm.name = ''
+  editForm.college = ''
+}
+
+function openEditDialog(row: AdminUserItem): void {
+  editUserId.value = row.id
+  editForm.account = row.account
+  editForm.name = row.name
+  editForm.college = row.college || ''
+  editError.value = ''
+  editDialogVisible.value = true
+}
+
+async function submitEdit(): Promise<void> {
+  if (!editFormRef.value || !editUserId.value) return
+  const valid = await editFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  submitting.value = true
+  editError.value = ''
+  try {
+    await updateAdminUser(editUserId.value, {
+      account: editForm.account.trim(),
+      name: editForm.name.trim(),
+      college: editForm.college.trim() || null
+    })
+    editDialogVisible.value = false
+    await loadUsers()
+  } catch {
+    // http 层已提示；学号冲突为 409
+  } finally {
+    submitting.value = false
+  }
+}
+
+/* ---------- delete student (history-guarded on the server) ---------- */
+async function confirmDelete(row: AdminUserItem): Promise<void> {
+  const confirmed = await ElMessageBox.confirm(
+    `确认删除学生「${row.name}（${row.account}」？仅无预约/违约/信用流水/申诉历史的账号可删除；有历史的账号会被拒绝并提示改用「禁用」。`,
+    '危险操作',
+    { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
+  )
+    .then(() => true)
+    .catch(() => false)
+  if (!confirmed) return
+  submitting.value = true
+  try {
+    await deleteAdminUser(row.id)
+    ElMessage.success('学生账号已删除')
+    await loadUsers()
+  } catch {
+    // http 层已提示（有历史时 409 并给出计数）
+  } finally {
+    submitting.value = false
+  }
+}
+
 /* ---------- one-time password display ---------- */
 const passwordVisible = ref(false)
 const oneTimePassword = ref('')
@@ -545,10 +650,6 @@ async function checkActiveOrders(account: string): Promise<void> {
 
 async function confirmStatusChange(): Promise<void> {
   if (!statusUser.value) return
-  if (!statusReason.value.trim()) {
-    statusError.value = '请填写操作原因'
-    return
-  }
   if (statusTarget.value === 'DISABLED' && activeOrderCount.value > 0 && !statusConfirmTerminate.value) {
     statusError.value = '该学生有有效订单，需确认无责终止后才能禁用'
     return
@@ -612,10 +713,6 @@ function openBlockDialog(row: AdminUserItem, target: boolean): void {
 
 async function confirmBlockChange(): Promise<void> {
   if (!blockUser.value) return
-  if (!blockReason.value.trim()) {
-    blockError.value = '请填写操作原因'
-    return
-  }
   const userName = blockUser.value.name
   const confirmed = await ElMessageBox.confirm(
     blockTarget.value ? `确认将「${userName}」加入黑名单？` : `确认解除「${userName}」的人工黑名单？`,
@@ -666,10 +763,6 @@ function openResetDialog(row: AdminUserItem): void {
 
 async function confirmReset(): Promise<void> {
   if (!resetUser.value) return
-  if (!resetReason.value.trim()) {
-    resetError.value = '请填写操作原因'
-    return
-  }
   const confirmed = await ElMessageBox.confirm(
     `确认为「${resetUser.value.name}」重置密码？旧密码立即失效，全部旧会话作废。`,
     '二次确认',
@@ -706,8 +799,7 @@ const creditRules: FormRules<typeof creditForm> = {
     { type: 'number', min: 0, max: 100, message: '目标分数必须在 0—100 之间', trigger: 'blur' }
   ],
   reason: [
-    { required: true, message: '请填写调整原因', trigger: 'blur' },
-    { min: 5, max: 500, message: '原因需 5—500 字', trigger: 'blur' }
+    { max: 500, message: '原因不能超过 500 字', trigger: 'blur' }
   ]
 }
 

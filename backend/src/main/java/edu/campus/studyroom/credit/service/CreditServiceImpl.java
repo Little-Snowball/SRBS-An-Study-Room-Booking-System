@@ -77,7 +77,7 @@ public class CreditServiceImpl implements CreditService {
         log.setBalanceBefore(before);
         log.setBalanceAfter(after);
         log.setSourceLogId(command.sourceLogId());
-        log.setReason(command.reason());
+        log.setReason(command.reason() == null ? "" : command.reason());
         log.setOperatorId(command.operatorId());
         log.setCreatedAt(clock.nowLocal());
         creditLogMapper.insert(log);

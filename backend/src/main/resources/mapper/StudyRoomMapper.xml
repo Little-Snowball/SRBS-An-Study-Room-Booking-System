@@ -8,7 +8,6 @@
     <result property="name" column="name"/>
     <result property="campus" column="campus"/>
     <result property="building" column="building"/>
-    <result property="floorNo" column="floor_no"/>
     <result property="openTime" column="open_time"/>
     <result property="closeTime" column="close_time"/>
     <result property="rowsCount" column="rows_count"/>
@@ -21,7 +20,7 @@
   </resultMap>
 
   <sql id="studyRoomColumns">
-    id, code, name, campus, building, floor_no, open_time, close_time, rows_count, cols_count,
+    id, code, name, campus, building, open_time, close_time, rows_count, cols_count,
     checkin_code_hash, status, version, created_at, updated_at
   </sql>
 
@@ -74,21 +73,21 @@
 
   <insert id="insert" parameterType="edu.campus.studyroom.resource.domain.StudyRoom"
           useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO study_room (code, name, campus, building, floor_no, open_time, close_time,
+    INSERT INTO study_room (code, name, campus, building, open_time, close_time,
                             rows_count, cols_count, checkin_code_hash, status, version,
                             created_at, updated_at)
-    VALUES (#{code}, #{name}, #{campus}, #{building}, #{floorNo}, #{openTime}, #{closeTime},
+    VALUES (#{code}, #{name}, #{campus}, #{building}, #{openTime}, #{closeTime},
             #{rowsCount}, #{colsCount}, #{checkinCodeHash}, #{status}, 0,
             #{createdAt}, #{updatedAt})
   </insert>
 
-  <!-- 乐观更新可编辑基础信息；WHERE 带期望 version，affectedRows 必须为 1 -->
+  <!-- 乐观更新可编辑基础信息（含编号 code）；WHERE 带期望 version，affectedRows 必须为 1 -->
   <update id="updateBasics">
     UPDATE study_room
-    SET name = #{name},
+    SET code = #{code},
+        name = #{name},
         campus = #{campus},
         building = #{building},
-        floor_no = #{floorNo},
         open_time = #{openTime},
         close_time = #{closeTime},
         rows_count = #{rowsCount},

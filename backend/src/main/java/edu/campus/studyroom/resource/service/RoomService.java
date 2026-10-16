@@ -140,7 +140,6 @@ public class RoomService {
         room.setName(request.name().trim());
         room.setCampus(request.campus().trim());
         room.setBuilding(request.building().trim());
-        room.setFloorNo(request.floorNo());
         room.setOpenTime(request.openTime());
         room.setCloseTime(request.closeTime());
         room.setRowsCount(request.rows());
@@ -200,11 +199,15 @@ public class RoomService {
                 || !request.closeTime().equals(room.getCloseTime());
         boolean hoursShrunk = request.closeTime().isBefore(room.getCloseTime())
                 || request.openTime().isAfter(room.getOpenTime());
+        String newCode = request.code().trim();
+        if (!newCode.equals(room.getCode()) && studyRoomMapper.selectByCode(newCode) != null) {
+            throw new BusinessException(ErrorCode.INVALID_STATE, "房间编码已存在，请更换编码");
+        }
         OrderPolicy policy = null;
         List<Reservation> affected = List.of();
         if (hoursShrunk) {
             if (request.orderPolicy() == null) {
-                throw BusinessException.validation("缩短营业时间必须指定 orderPolicy（KEEP_ACTIVE/FORCE_END）");
+                throw BusinessException.validation("缩短开放时间必须指定 orderPolicy（KEEP_ACTIVE/FORCE_END）");
             }
             policy = request.orderPolicy();
             List<Reservation> effective = effectiveOrdersOfRoom(roomId);
@@ -212,8 +215,8 @@ public class RoomService {
             affected = filterOutsideHours(effective, request.openTime(), request.closeTime());
         }
 
-        int updated = studyRoomMapper.updateBasics(roomId, request.name().trim(), request.campus().trim(),
-                request.building().trim(), request.floorNo(), request.openTime(), request.closeTime(),
+        int updated = studyRoomMapper.updateBasics(roomId, newCode, request.name().trim(), request.campus().trim(),
+                request.building().trim(), request.openTime(), request.closeTime(),
                 request.rows(), request.cols(), request.expectedVersion(), now);
         requireOneRow(updated, "自习室基础信息更新");
 
@@ -228,13 +231,15 @@ public class RoomService {
         if (hoursShrunk) {
             counters = applyOrderPolicy(affected, TerminationReason.HOURS_CHANGED, policy, causeEventId,
                     "room:" + roomId + ":hours:" + causeEventId,
-                    "自习室《" + room.getName() + "》营业时间已调整为 "
+                    "自习室《" + room.getName() + "》开放时间已调整为 "
                             + request.openTime() + "—" + request.closeTime(), now);
         }
 
         recordIdempotent(admin.userId(), "ROOM_UPDATE", requestKey, request, "ROOM", String.valueOf(roomId));
         auditService.record(admin, "ROOM_UPDATE", "ROOM", String.valueOf(roomId),
-                "{\"roomId\":" + roomId + ",\"hoursChanged\":" + hoursChanged
+                "{\"roomId\":" + roomId + ",\"code\":\"" + newCode
+                        + "\",\"codeChanged\":" + !newCode.equals(room.getCode())
+                        + ",\"hoursChanged\":" + hoursChanged
                         + ",\"orderPolicy\":" + (policy == null ? "null" : "\"" + policy.name() + "\"")
                         + ",\"cancelled\":" + counters.cancelled() + ",\"kept\":" + counters.kept()
                         + ",\"ended\":" + counters.ended() + "}");
@@ -358,7 +363,7 @@ public class RoomService {
         java.util.List<RoomListItem> items = new java.util.ArrayList<>(details.items().size());
         for (RoomDetail detail : details.items()) {
             items.add(new RoomListItem(detail.id(), detail.code(), detail.name(), detail.campus(),
-                    detail.building(), detail.floorNo(), detail.openTime(), detail.closeTime(),
+                    detail.building(), detail.openTime(), detail.closeTime(),
                     detail.rows(), detail.cols(), detail.status(), (int) detail.normalSeats()));
         }
         return PageResult.of(items, details.total(), details.page(), details.size());
@@ -416,7 +421,7 @@ public class RoomService {
             throw BusinessException.notFound("自习室不存在");
         }
         if (newStatus == null && newOpenTime == null && newCloseTime == null) {
-            throw BusinessException.validation("请至少提供 newStatus 或新的营业时间（newOpenTime/newCloseTime）");
+            throw BusinessException.validation("请至少提供 newStatus 或新的开放时间（newOpenTime/newCloseTime）");
         }
         if (newOpenTime != null && newCloseTime != null) {
             validateHours(newOpenTime, newCloseTime);
@@ -631,7 +636,6 @@ public class RoomService {
                 room.getName(),
                 room.getCampus(),
                 room.getBuilding(),
-                room.getFloorNo(),
                 room.getOpenTime(),
                 room.getCloseTime(),
                 room.getRowsCount(),

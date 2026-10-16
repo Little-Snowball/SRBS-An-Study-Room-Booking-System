@@ -93,7 +93,7 @@ public class AvailabilityService {
         for (StudyRoom room : rooms) {
             int matching = countMatching(room, queryDate, startAt, endAt, hasPower, nearWindow, quietZone);
             items.add(new RoomListItem(String.valueOf(room.getId()), room.getCode(), room.getName(),
-                    room.getCampus(), room.getBuilding(), room.getFloorNo(),
+                    room.getCampus(), room.getBuilding(),
                     room.getOpenTime(), room.getCloseTime(),
                     room.getRowsCount(), room.getColsCount(), room.getStatus(), matching));
         }

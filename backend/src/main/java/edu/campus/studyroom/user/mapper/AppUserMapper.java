@@ -47,5 +47,15 @@ public interface AppUserMapper {
                        @Param("mustChangePassword") boolean mustChangePassword,
                        @Param("now") LocalDateTime now);
 
+    /** 身份信息更新（学号/姓名/学院），行锁由调用方持有。 */
+    int updateIdentity(@Param("id") Long id,
+                       @Param("account") String account,
+                       @Param("name") String name,
+                       @Param("college") String college,
+                       @Param("now") LocalDateTime now);
+
+    /** 物理删除（仅限无业务历史的学生账号，调用方已完成依赖清理）。 */
+    int deleteById(@Param("id") Long id);
+
     long countByRole(UserRole role);
 }

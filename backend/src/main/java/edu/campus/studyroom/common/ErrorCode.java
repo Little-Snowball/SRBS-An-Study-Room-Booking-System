@@ -18,6 +18,8 @@ public enum ErrorCode {
     PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN),
     // 404
     NOT_FOUND(HttpStatus.NOT_FOUND),
+    // 405
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED),
     // 409 time-slot / state / idempotency conflicts
     SLOT_CONFLICT(HttpStatus.CONFLICT),
     USER_TIME_CONFLICT(HttpStatus.CONFLICT),

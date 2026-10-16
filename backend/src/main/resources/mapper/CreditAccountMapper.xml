@@ -27,4 +27,7 @@
     SET score = #{newScore}, version = version + 1, updated_at = #{now}
     WHERE user_id = #{userId} AND version = #{expectedVersion}
   </update>
+  <delete id="deleteByUserId">
+    DELETE FROM credit_account WHERE user_id = #{userId}
+  </delete>
 </mapper>

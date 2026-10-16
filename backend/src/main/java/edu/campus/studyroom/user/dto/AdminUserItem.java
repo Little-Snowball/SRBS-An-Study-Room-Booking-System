@@ -18,7 +18,7 @@ public record AdminUserItem(
         UserStatus status,
         boolean blocked,
         int creditScore,
-        boolean mustChangePassword,
+        int authVersion,
         OffsetDateTime createdAt
 ) {
 }

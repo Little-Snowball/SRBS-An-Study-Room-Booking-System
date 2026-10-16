@@ -63,9 +63,6 @@ router.beforeEach((to) => {
   if (!auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  if (auth.mustChangePassword && to.name !== 'change-password') {
-    return { name: 'change-password' }
-  }
   const requiredRole = to.meta.role as string | undefined
   if (requiredRole === 'ADMIN' && !auth.isAdmin) {
     return { name: auth.isStudent ? 'student-home' : 'login' }

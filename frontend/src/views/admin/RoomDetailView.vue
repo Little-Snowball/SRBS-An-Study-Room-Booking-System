@@ -4,7 +4,7 @@
       <div class="toolbar-left">
         <el-button @click="goBack">返回房间列表</el-button>
         <span v-if="room" class="room-heading">
-          {{ room.name }}（{{ room.code }}）· {{ room.campus }} {{ room.building }} {{ room.floorNo }} 层 ·
+          {{ room.name }}（{{ room.code }}）· {{ room.campus }} {{ room.building }} ·
           {{ room.openTime }} — {{ room.closeTime }} · {{ room.rows }} 行 × {{ room.cols }} 列
         </span>
       </div>
@@ -168,14 +168,14 @@
               <el-option label="强制终止（FORCE_END）：无责终止进行中/暂离订单，不扣分不奖励" value="FORCE_END" />
             </el-select>
           </el-form-item>
-          <el-form-item label="操作原因" required>
+          <el-form-item label="操作原因">
             <el-input
               v-model="statusReason"
               type="textarea"
               :rows="2"
               maxlength="200"
               show-word-limit
-              placeholder="请填写停用原因，将记入审计日志"
+              placeholder="停用原因（选填），将记入审计日志"
             />
           </el-form-item>
           <el-form-item label="影响预览">

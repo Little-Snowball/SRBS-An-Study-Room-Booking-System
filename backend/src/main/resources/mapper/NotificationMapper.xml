@@ -60,4 +60,7 @@
     UPDATE notification SET read_at = #{readAt}
     WHERE id = #{id} AND user_id = #{userId} AND read_at IS NULL
   </update>
+  <delete id="deleteByUserId">
+    DELETE FROM notification WHERE user_id = #{userId}
+  </delete>
 </mapper>

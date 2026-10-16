@@ -274,7 +274,7 @@
     },
     "/admin/rooms/{id}": {
       "patch": {
-        "tags": ["admin"], "summary": "编辑房间（缩短营业时间必须给 orderPolicy）", "security": [{ "bearer": [] }],
+        "tags": ["admin"], "summary": "编辑房间（编号可修改；缩短开放时间必须给 orderPolicy）", "security": [{ "bearer": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "成功" }, "409": { "description": "版本冲突" } }
       }
@@ -313,11 +313,15 @@
       "get": { "tags": ["admin"], "summary": "预约查询（多条件）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } }
     },
     "/admin/users": {
-      "get": { "tags": ["admin"], "summary": "学生查询", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } },
+      "get": { "tags": ["admin"], "summary": "学生查询（默认仅返回学生角色，不含管理员）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "分页结果" } } },
       "post": {
         "tags": ["admin"], "summary": "创建学生（返回一次性密码）", "security": [{ "bearer": [] }],
         "responses": { "201": { "description": "用户+一次性密码（仅本次展示）" }, "409": { "description": "学号已存在" } }
       }
+    },
+    "/admin/users/{id}": {
+      "patch": { "tags": ["admin"], "summary": "修改学生信息（学号/姓名/学院）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "更新后的用户；学号变更后该学生全部会话失效" }, "409": { "description": "学号已存在" } } },
+      "delete": { "tags": ["admin"], "summary": "删除学生账号（仅无预约/违约/信用流水/申诉历史时可删）", "security": [{ "bearer": [] }], "responses": { "200": { "description": "已删除；审计操作人置空保留审计历史" }, "409": { "description": "存在业务历史，不可删除，请改用禁用" } } }
     },
     "/admin/users/{id}/status": {
       "post": { "tags": ["admin"], "summary": "启用/禁用", "security": [{ "bearer": [] }], "responses": { "200": { "description": "成功" }, "422": { "description": "需确认无责终止 confirmTerminate" } } }
@@ -393,7 +397,7 @@
       "CreateReservationRequest": { "type": "object", "required": ["seatId", "startAt", "endAt"], "properties": { "seatId": { "type": "string" }, "startAt": { "type": "string", "example": "2026-10-15T09:00:00+08:00" }, "endAt": { "type": "string", "example": "2026-10-15T11:30:00+08:00" } } },
       "CheckInRequest": { "type": "object", "required": ["code"], "properties": { "code": { "type": "string", "pattern": "^[0-9]{6}$" } } },
       "SubmitAppealRequest": { "type": "object", "required": ["violationId", "reason"], "properties": { "violationId": { "type": "string" }, "reason": { "type": "string", "minLength": 10, "maxLength": 1000 }, "fileIds": { "type": "array", "items": { "type": "string" }, "maxItems": 3 } } },
-      "CreateRoomRequest": { "type": "object", "required": ["code", "name", "campus", "building", "floorNo", "openTime", "closeTime", "rows", "cols", "checkinCode"], "properties": { "code": { "type": "string" }, "name": { "type": "string" }, "campus": { "type": "string" }, "building": { "type": "string" }, "floorNo": { "type": "integer" }, "openTime": { "type": "string", "example": "07:00" }, "closeTime": { "type": "string", "example": "22:30" }, "rows": { "type": "integer", "maximum": 100 }, "cols": { "type": "integer", "maximum": 100 }, "checkinCode": { "type": "string", "pattern": "^[0-9]{6}$" } } }
+      "CreateRoomRequest": { "type": "object", "required": ["code", "name", "campus", "building", "openTime", "closeTime", "rows", "cols", "checkinCode"], "properties": { "code": { "type": "string" }, "name": { "type": "string" }, "campus": { "type": "string" }, "building": { "type": "string" }, "openTime": { "type": "string", "example": "07:00" }, "closeTime": { "type": "string", "example": "22:30" }, "rows": { "type": "integer", "maximum": 100 }, "cols": { "type": "integer", "maximum": 100 }, "checkinCode": { "type": "string", "pattern": "^[0-9]{6}$" } } }
     }
   }
 }
